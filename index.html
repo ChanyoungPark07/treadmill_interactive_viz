@@ -4,11 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Treadmill data</title>
-    
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="histogram"></div>
+    <label for="age">Age:</label>
+    <select id="age">
+      <option value="all">All</option>
+      <option value="10s">10s</option>
+      <option value="20s">20s</option>
+      <option value="30s">30s</option>
+      <option value="40s">40s</option>
+      <option value="50s">50+</option>
+    </select>
+
+    <label for="sex">Sex:</label>
+    <select id="sex">
+      <option value="all">All</option>
+      <option value="Male">Male</option>
+      <option value="Female">Female</option>
+    </select>
+    <svg width="800" height="500"></svg>
+  
     
-    <script src="global.js"></script>
+    <script src="global.js" type="module"></script>
 </body>
 </html>
