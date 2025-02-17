@@ -19,29 +19,62 @@ const tooltip = d3
   .style("padding", "5px")
   .style("border", "1px solid #ddd");
 
+// Add
 d3.csv("merged.csv").then((data) => {
   data.forEach((d) => {
     d.RER = +d.RER;
     d.Age = +d.Age;
-    d.Sex = +d.Sex; // Make sure Sex is converted to number
+    d.Sex = +d.Sex;
+    d.Weight = +d.Weight;
+    d.Height = +d.Height;
+    d.Temperature = +d.Temperature;
+    d.Speed = +d.Speed;
+    d.Resting = +d.Resting;
   });
 
   drawHistogram(data);
   setupFilters(data);
 });
 
+// Setup
 function setupFilters(data) {
   const ageSelect = d3.select("#age");
   const sexSelect = d3.select("#sex");
+  const weightSelect = d3.select("#weight");
+  const heightSelect = d3.select("#height");
+  const temperatureSelect = d3.select("#temperature");
+  const speedSelect = d3.select("#speed");
+  const restingSelect = d3.select("#resting");
 
   function updateFilters() {
     const ageVal = ageSelect.node().value;
     const sexVal = sexSelect.node().value;
+    const weightVal = weightSelect.node().value;
+    const heightVal = heightSelect.node().value;
+    const temperatureVal = temperatureSelect.node().value;
+    const speedVal = speedSelect.node().value;
+    const restingVal = restingSelect.node().value;
 
     const filtered = data.filter((d) => {
       const ageFilter = getAgeFilter(ageVal, d.Age);
       const sexFilter = getSexFilter(sexVal, d.Sex);
-      return ageFilter && sexFilter;
+      const weightFilter = getWeightFilter(weightVal, d.Weight);
+      const heightFilter = getHeightFilter(heightVal, d.Height);
+      const temperatureFilter = getTemperatureFilter(
+        temperatureVal,
+        d.Temperature
+      );
+      const speedFilter = getSpeedFilter(speedVal, d.Speed);
+      const restingFilter = getRestingFilter(restingVal, d.Resting);
+      return (
+        ageFilter &&
+        sexFilter &&
+        weightFilter &&
+        heightFilter &&
+        temperatureFilter &&
+        speedFilter &&
+        restingFilter
+      );
     });
 
     drawHistogram(filtered);
@@ -49,8 +82,14 @@ function setupFilters(data) {
 
   ageSelect.on("change", updateFilters);
   sexSelect.on("change", updateFilters);
+  weightSelect.on("change", updateFilters);
+  heightSelect.on("change", updateFilters);
+  temperatureSelect.on("change", updateFilters);
+  speedSelect.on("change", updateFilters);
+  restingSelect.on("change", updateFilters);
 }
 
+// Add filter
 function getAgeFilter(ageVal, age) {
   switch (ageVal) {
     case "all":
@@ -74,10 +113,77 @@ function getSexFilter(sexVal, sex) {
       return true;
     case "Male":
       return sex === 0;
-    case "Female":
-      return sex === 1;
     default:
+      return sex === 1;
+  }
+}
+
+function getWeightFilter(weightVal, weight) {
+  switch (weightVal) {
+    case "all":
       return true;
+    case "Under 60":
+      return weight < 60;
+    case "60-70":
+      return weight >= 60 && weight < 70;
+    case "70-80":
+      return weight >= 70 && weight < 80;
+    case "80-90":
+      return weight >= 80 && weight < 90;
+    default:
+      return weight >= 90;
+  }
+}
+
+function getHeightFilter(heightVal, height) {
+  switch (heightVal) {
+    case "all":
+      return true;
+    case "Under 165":
+      return height < 165;
+    case "165-175":
+      return height >= 165 && height < 175;
+    case "175-185":
+      return height >= 175 && height < 185;
+    default:
+      return height >= 185;
+  }
+}
+
+function getTemperatureFilter(tempVal, temp) {
+  switch (tempVal) {
+    case "all":
+      return true;
+    case "Under 20":
+      return temp < 20;
+    case "20-22.5":
+      return temp >= 20 && temp < 22.5;
+    case "22.5-25":
+      return temp >= 22.5 && temp < 25;
+    default:
+      return temp >= 25;
+  }
+}
+
+function getRestingFilter(restingVal, resting) {
+  switch (restingVal) {
+    case "running":
+      return resting === 0;
+    default:
+      return resting === 1;
+  }
+}
+
+function getSpeedFilter(speedVal, speed) {
+  switch (speedVal) {
+    case "all":
+      return true;
+    case "5-10":
+      return speed >= 5 && speed < 10;
+    case "10-15":
+      return speed >= 10 && speed < 15;
+    default:
+      return speed >= 15;
   }
 }
 
