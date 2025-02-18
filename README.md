@@ -1,6 +1,10 @@
 # Distribution of Respiratory Exchange Rate (RER) by Demographics
 
+## Rationale
 
+We chose to focus on RER because it shows the carbohydrate-to-fat burn ratio, an interesting topic for many people interested in fitness and metabolism. We chose histograms as our primary visual encoding because they effectively display frequency distributions, making it easy for users to identify trends and variations in RER values across different subsets of the data. The choice of filters as our interaction technique was chosen by the need for simplicity and clarity, allowing users to easily segment the data by age, sex, weight, height, speed, and environmental factors. We considered other visualizations such as scatterplots, but these alternatives either introduced too much complexity or was not efficient in visualizing the distribution.
+
+The data originally came in two separate csv files, one containing the information about each participant and another containing the information about the runs on treadmill. Then, the dataset were filtered out to only contain records with RER values between 0-1.5, as anything over 1.5 is considered to be barely possible even when intentionally hyperventilating under a clinical environment, and values under 0 is impossible. 
 
 ## Development Process
 
