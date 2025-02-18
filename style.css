@@ -197,32 +197,3 @@ select:disabled {
   font-weight: var(--font-semi-bold);
   margin-bottom: var(--mb-2);
 }
-
-.footer__social {
-  display: flex;
-  justify-content: center;
-  column-gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.footer__social-icon {
-  background-color: var(--title-color);
-  color: var(--container-color);
-  font-size: 1.125rem;
-  padding: 0.4rem;
-  border-radius: 0.5rem;
-  display: inline-flex;
-  text-decoration: none;
-}
-
-.footer__social-icon:hover {
-  background-color: var(--title-color-dark);
-}
-
-.footer__copy {
-  display: block;
-  margin-top: 2rem;
-  color: var(--title-color);
-  text-align: center;
-  font-size: var(--smaller-font-size);
-}
