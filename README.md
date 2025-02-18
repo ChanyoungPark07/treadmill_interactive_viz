@@ -1,2 +1,7 @@
 # Distribution of Respiratory Exchange Rate (RER) by Demographics
 
+
+
+## Development Process
+
+This project was a group effort with the work load spread evenly among individuals. Each brainstorming, data transformation, and design ideas and choices were made as a group throughout the iterative process of creating the interactive histogram. We began with a static histogram displaying all the data using RER as the x-axis. We then added a filter for one feature to start the interative process for the visualization. After making sure this worked, we added the rest of the features to filter the histogram by such as age, sex, weight, height, temperature, speed, and cooldown (whether or not the runner on the treadmill was at cooldown after running their max speed). We then added the x and y labels and adjusted the x-ticks to remain constant across all the filter changes. We also added transitions, so that the bars smoothly change with the change of the filters. Finally, after adding styling to make the filter dropdowns and selection a more smoother experience for the user, we added tooltips to show the information for the individual bars, such as bin range and count data, and we added information for the features in the filters to explain what they are in the context of the experimental data we extracted. 21 people hours led to the final version of the visualization and the aspect that took the most time was making the filters for each feature in the dataset for the interative histogram.
