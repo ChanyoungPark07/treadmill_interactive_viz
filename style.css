@@ -18,6 +18,10 @@ body {
   margin-bottom: 20px;
 }
 
+.link a {
+  display: inline-block;
+}
+
 .content-grid {
   display: grid;
   grid-template-columns: minmax(50px, 1fr) minmax(500px, 4fr);
