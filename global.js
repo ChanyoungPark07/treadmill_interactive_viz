@@ -1,13 +1,81 @@
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm";
 
-const margin = { top: 50, right: 30, bottom: 50, left: 80 },
-  width = 800 - margin.left - margin.right,
-  height = 500 - margin.top - margin.bottom;
+// Add tooltip container to body if it doesn't exist
+const infoTooltip = d3
+  .select("body")
+  .append("div")
+  .attr("class", "info-tooltip")
+  .style("position", "absolute")
+  .style("visibility", "hidden")
+  .style("background", "white")
+  .style("padding", "8px")
+  .style("border", "1px solid #ddd")
+  .style("border-radius", "4px")
+  .style("box-shadow", "0 2px 4px rgba(0,0,0,0.1)")
+  .style("max-width", "250px")
+  .style("font-size", "12px");
 
+// Add info icons next to labels
+const coolingLabel = d3.select("label[for='resting']");
+coolingLabel
+  .style("display", "inline-flex")
+  .style("align-items", "center")
+  .append("span")
+  .attr("class", "info-icon")
+  .style("margin-left", "5px")
+  .style("cursor", "help")
+  .style("color", "#666")
+  .html(" ⓘ")
+  .on("mouseover", (event) => {
+    infoTooltip
+      .style("visibility", "visible")
+      .html(
+        "Cooldown refers to the final phase of the run, during which they ran at 5 km/h after reaching max speed."
+      )
+      .style("top", event.pageY - 10 + "px")
+      .style("left", event.pageX + 10 + "px");
+  })
+  .on("mouseout", () => {
+    infoTooltip.style("visibility", "hidden");
+  });
+
+const speedLabel = d3.select("label[for='speed']");
+speedLabel
+  .style("display", "inline-flex")
+  .style("align-items", "center")
+  .append("span")
+  .attr("class", "info-icon")
+  .style("margin-left", "5px")
+  .style("cursor", "help")
+  .style("color", "#666")
+  .html(" ⓘ")
+  .on("mouseover", (event) => {
+    infoTooltip
+      .style("visibility", "visible")
+      .html(
+        "The running speed was strictly increasing throughout the experiment, so higher speeds are related to longer running times."
+      )
+      .style("top", event.pageY - 10 + "px")
+      .style("left", event.pageX + 10 + "px");
+  })
+  .on("mouseout", () => {
+    infoTooltip.style("visibility", "hidden");
+  });
+
+// Define margins with more space for bottom
+const margin = { top: 50, right: 30, bottom: 70, left: 80 };
+
+// Create responsive SVG with adjusted viewBox
 const svg = d3
-  .select("svg")
+  .select("#chart")
+  .attr("preserveAspectRatio", "xMinYMin meet")
+  .attr("viewBox", `0 0 800 500`) // Increased height to accommodate labels
   .append("g")
   .attr("transform", `translate(${margin.left},${margin.top})`);
+
+// Calculate dimensions based on viewBox
+const width = 800 - margin.left - margin.right;
+const height = 500 - margin.top - margin.bottom;
 
 const tooltip = d3
   .select("body")
@@ -19,7 +87,7 @@ const tooltip = d3
   .style("padding", "5px")
   .style("border", "1px solid #ddd");
 
-// Add
+// Rest of your d3.csv and data loading code remains the same...
 d3.csv("merged.csv").then((data) => {
   data.forEach((d) => {
     d.RER = +d.RER;
@@ -205,6 +273,22 @@ function drawHistogram(data, dlength, previousBins = null) {
   if (!window.previousBins) {
     window.previousBins = [];
   }
+
+  // Get current sex filter value
+  const currentSex = d3.select("#sex").node().value;
+
+  // Define colors based on sex selection
+  const getBarColor = () => {
+    switch (currentSex) {
+      case "Male":
+        return "#89CFF0"; // Baby blue
+      case "Female":
+        return "#FFB6C1"; // Pink
+      default:
+        return "#69b3a2"; // Original teal color
+    }
+  };
+
   // Update title and labels with transitions
   const labels = {
     "chart-title": {
@@ -217,12 +301,12 @@ function drawHistogram(data, dlength, previousBins = null) {
     "x-label": {
       text: "RER (VCO2 / VO2)",
       x: width / 2,
-      y: height + margin.top + 20,
+      y: height + 40, // Adjusted position
       size: "14px",
     },
     "y-label": {
       text: "Count",
-      x: -height / 2 + 20,
+      x: -height / 2,
       y: -60,
       size: "14px",
       transform: "rotate(-90)",
@@ -230,7 +314,7 @@ function drawHistogram(data, dlength, previousBins = null) {
     "count-label": {
       text: `Total Count: ${dlength}`,
       x: width,
-      y: 20,
+      y: 30, // Adjusted position
       size: "14px",
       anchor: "end",
     },
@@ -405,7 +489,7 @@ function drawHistogram(data, dlength, previousBins = null) {
     .attr("y", (d) => y(d.length))
     .attr("width", (d) => x(d.x1) - x(d.x0) - 1)
     .attr("height", (d) => height - y(d.length))
-    .attr("fill", "#69b3a2");
+    .attr("fill", getBarColor());
 
   // Add new bars
   bars
@@ -415,7 +499,7 @@ function drawHistogram(data, dlength, previousBins = null) {
     .attr("y", height)
     .attr("width", (d) => x(d.x1) - x(d.x0) - 1)
     .attr("height", 0)
-    .attr("fill", "#69b3a2")
+    .attr("fill", getBarColor())
     .transition()
     .duration(750)
     .attr("y", (d) => y(d.length))

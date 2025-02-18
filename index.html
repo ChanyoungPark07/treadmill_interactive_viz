@@ -7,83 +7,86 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="selections">
-    <div class="selection-item">
-      <label for="age">Age:</label>
-      <select id="age">
-        <option value="all">All</option>
-        <option value="10s">10s</option>
-        <option value="20s">20s</option>
-        <option value="30s">30s</option>
-        <option value="40s">40s</option>
-        <option value="50s">50+</option>
-      </select>
+  <h1 class="page-title">Treadmill Maximal Exercise Tests</h1>
+  <div class="content-grid">
+    <div id="selections">
+      <div class="selection-item">
+        <label for="age">Age:</label>
+        <select id="age">
+          <option value="all">All</option>
+          <option value="10s">10s</option>
+          <option value="20s">20s</option>
+          <option value="30s">30s</option>
+          <option value="40s">40s</option>
+          <option value="50s">50+</option>
+        </select>
+      </div>
+    
+      <div class="selection-item">
+        <label for="sex">Sex:</label>
+        <select id="sex">
+          <option value="all">All</option>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+        </select>
+      </div>
+    
+      <div class="selection-item">
+        <label for="weight">Weight (kg):</label>
+        <select id="weight">
+          <option value="all">All</option>
+          <option value="Under 60">Under 60</option>
+          <option value="60-70">60-70</option>
+          <option value="70-80">70-80</option>
+          <option value="80-90">80-90</option>
+          <option value="90+">90+</option>
+        </select>
+      </div>
+    
+      <div class="selection-item">
+        <label for="height">Height (cm):</label>
+        <select id="height">
+          <option value="all">All</option>
+          <option value="Under 165">Under 165</option>
+          <option value="165-175">165-175</option>
+          <option value="175-185">175-185</option>
+          <option value="185+">Over 185</option>
+        </select>
+      </div>
+    
+      <div class="selection-item">
+        <label for="temperature">Room Temperature (C):</label>
+        <select id="temperature">
+          <option value="all">All</option>
+          <option value="Under 20">Under 20</option>
+          <option value="20-22.5">20-22.5</option>
+          <option value="22.5-25">22.5-25</option>
+          <option value="25+">Over 25</option>
+        </select>
+      </div>
+    
+      <div class="selection-item">
+        <label for="speed">Run Speed (km/h):</label>
+        <select id="speed">
+          <option value="all">All</option>
+          <option value="5-10">5-10</option>
+          <option value="10-15">10-15</option>
+          <option value="15+">Over 15</option>
+        </select>
+      </div>
+    
+      <div class="selection-item">
+        <label for="resting">Cooldown:</label>
+        <select id="resting">
+          <option value="running">False</option>
+          <option value="resting">True</option>
+        </select>
+      </div>
     </div>
-  
-    <div class="selection-item">
-      <label for="sex">Sex:</label>
-      <select id="sex">
-        <option value="all">All</option>
-        <option value="Male">Male</option>
-        <option value="Female">Female</option>
-      </select>
-    </div>
-  
-    <div class="selection-item">
-      <label for="weight">Weight (kg):</label>
-      <select id="weight">
-        <option value="all">All</option>
-        <option value="Under 60">Under 60</option>
-        <option value="60-70">60-70</option>
-        <option value="70-80">70-80</option>
-        <option value="80-90">80-90</option>
-        <option value="90+">90+</option>
-      </select>
-    </div>
-  
-    <div class="selection-item">
-      <label for="height">Height (cm):</label>
-      <select id="height">
-        <option value="all">All</option>
-        <option value="Under 165">Under 165</option>
-        <option value="165-175">165-175</option>
-        <option value="175-185">175-185</option>
-        <option value="185+">Over 185</option>
-      </select>
-    </div>
-  
-    <div class="selection-item">
-      <label for="temperature">Temperature (C):</label>
-      <select id="temperature">
-        <option value="all">All</option>
-        <option value="Under 20">Under 20</option>
-        <option value="20-22.5">20-22.5</option>
-        <option value="22.5-25">22.5-25</option>
-        <option value="25+">Over 25</option>
-      </select>
-    </div>
-  
-    <div class="selection-item">
-      <label for="speed">Speed (km/h):</label>
-      <select id="speed">
-        <option value="all">All</option>
-        <option value="5-10">5-10</option>
-        <option value="10-15">10-15</option>
-        <option value="15+">Over 15</option>
-      </select>
-    </div>
-  
-    <div class="selection-item">
-      <label for="resting">Cooldown:</label>
-      <select id="resting">
-        <option value="running">False</option>
-        <option value="resting">True</option>
-      </select>
+    <div class="chart-container">
+      <svg id="chart"></svg>
     </div>
   </div>
-  <div class="chart-container">
-    <svg width="100%" height="100%"></svg>
-  </div>
-    <script src="global.js" type="module"></script>
+  <script src="global.js" type="module"></script>
 </body>
 </html>
