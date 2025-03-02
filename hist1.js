@@ -67,7 +67,7 @@ const margin = { top: 50, right: 30, bottom: 70, left: 80 };
 
 // Create responsive SVG with adjusted viewBox
 const svg = d3
-  .select("#chart")
+  .select("#hist1_chart")
   .attr("preserveAspectRatio", "xMinYMin meet")
   .attr("viewBox", `0 0 800 500`) // Increased height to accommodate labels
   .append("g")
@@ -84,10 +84,15 @@ const tooltip = d3
   .style("position", "absolute")
   .style("visibility", "hidden")
   .style("background", "white")
-  .style("padding", "5px")
-  .style("border", "1px solid #ddd");
+  .style("padding", "10px")
+  .style("border", "1px solid #ddd")
+  .style("border-radius", "4px")
+  .style("box-shadow", "0 2px 4px rgba(0,0,0,0.1)")
+  .style("font-size", "12px")
+  .style("pointer-events", "none")
+  .style("z-index", "1000");
 
-// Rest of your d3.csv and data loading code remains the same...
+// Load data
 d3.csv("merged.csv").then((data) => {
   data.forEach((d) => {
     d.RER = +d.RER;
@@ -110,51 +115,19 @@ function setupFilters(data) {
   const sexSelect = d3.select("#sex");
   const weightSelect = d3.select("#weight");
   const heightSelect = d3.select("#height");
-  const temperatureSelect = d3.select("#temperature");
-  const speedSelect = d3.select("#speed");
-  const restingSelect = d3.select("#resting");
-
-  function updateSpeedInput() {
-    const restingVal = restingSelect.node().value;
-    const speedInput = document.getElementById("speed");
-
-    if (restingVal === "resting") {
-      speedInput.disabled = true;
-      speedInput.value = "all";
-    } else {
-      speedInput.disabled = false;
-    }
-  }
 
   function updateFilters() {
     const ageVal = ageSelect.node().value;
     const sexVal = sexSelect.node().value;
     const weightVal = weightSelect.node().value;
     const heightVal = heightSelect.node().value;
-    const temperatureVal = temperatureSelect.node().value;
-    const speedVal = speedSelect.node().value;
-    const restingVal = restingSelect.node().value;
 
     const filtered = data.filter((d) => {
       const ageFilter = getAgeFilter(ageVal, d.Age);
       const sexFilter = getSexFilter(sexVal, d.Sex);
       const weightFilter = getWeightFilter(weightVal, d.Weight);
       const heightFilter = getHeightFilter(heightVal, d.Height);
-      const temperatureFilter = getTemperatureFilter(
-        temperatureVal,
-        d.Temperature
-      );
-      const speedFilter = getSpeedFilter(speedVal, d.Speed);
-      const restingFilter = getRestingFilter(restingVal, d.Resting);
-      return (
-        ageFilter &&
-        sexFilter &&
-        weightFilter &&
-        heightFilter &&
-        temperatureFilter &&
-        speedFilter &&
-        restingFilter
-      );
+      return ageFilter && sexFilter && weightFilter && heightFilter;
     });
     drawHistogram(filtered, filtered.length);
   }
@@ -163,12 +136,6 @@ function setupFilters(data) {
   sexSelect.on("change", updateFilters);
   weightSelect.on("change", updateFilters);
   heightSelect.on("change", updateFilters);
-  temperatureSelect.on("change", updateFilters);
-  speedSelect.on("change", updateFilters);
-  restingSelect.on("change", () => {
-    updateSpeedInput();
-    updateFilters();
-  });
 }
 
 // Add filter
@@ -232,44 +199,7 @@ function getHeightFilter(heightVal, height) {
   }
 }
 
-function getTemperatureFilter(tempVal, temp) {
-  switch (tempVal) {
-    case "all":
-      return true;
-    case "Under 20":
-      return temp < 20;
-    case "20-22.5":
-      return temp >= 20 && temp < 22.5;
-    case "22.5-25":
-      return temp >= 22.5 && temp < 25;
-    default:
-      return temp >= 25;
-  }
-}
-
-function getRestingFilter(restingVal, resting) {
-  switch (restingVal) {
-    case "running":
-      return resting === 0;
-    default:
-      return resting === 1;
-  }
-}
-
-function getSpeedFilter(speedVal, speed) {
-  switch (speedVal) {
-    case "all":
-      return true;
-    case "5-10":
-      return speed >= 5 && speed < 10;
-    case "10-15":
-      return speed >= 10 && speed < 15;
-    default:
-      return speed >= 15;
-  }
-}
-
-function drawHistogram(data, dlength, previousBins = null) {
+function drawHistogram(data, dlength) {
   if (!window.previousBins) {
     window.previousBins = [];
   }
@@ -277,44 +207,44 @@ function drawHistogram(data, dlength, previousBins = null) {
   // Get current sex filter value
   const currentSex = d3.select("#sex").node().value;
 
-  // Define colors based on sex selection
+  // Define colors based on sex selection with improved palette
   const getBarColor = () => {
     switch (currentSex) {
       case "Male":
-        return "#89CFF0"; // Baby blue
+        return "#4682B4"; // Steel blue - more muted and professional
       case "Female":
-        return "#FFB6C1"; // Pink
+        return "#DB7093"; // Pale violet red - more muted and professional
       default:
-        return "#69b3a2"; // Original teal color
+        return "#5D8AA8"; // Air Force blue - neutral color for combined data
     }
   };
 
   // Update title and labels with transitions
   const labels = {
     "chart-title": {
-      text: "Distribution of Respiratory Exchange Rate (RER) by Demographics",
+      text: "Density Distribution of Respiratory Exchange Rate (RER)",
       x: width / 2,
       y: -20,
       size: "18px",
       weight: "bold",
     },
     "x-label": {
-      text: "RER (VCO2 / VO2)",
+      text: "RER (VCO₂/VO₂)",
       x: width / 2,
-      y: height + 40, // Adjusted position
+      y: height + 40,
       size: "14px",
     },
     "y-label": {
-      text: "Count",
+      text: "Density",
       x: -height / 2,
       y: -60,
       size: "14px",
       transform: "rotate(-90)",
     },
     "count-label": {
-      text: `Total Count: ${dlength}`,
+      text: `Sample Size: ${dlength}`,
       x: width,
-      y: 30, // Adjusted position
+      y: 30,
       size: "14px",
       anchor: "end",
     },
@@ -345,8 +275,8 @@ function drawHistogram(data, dlength, previousBins = null) {
     label.transition().duration(750).text(config.text).style("opacity", 1);
   });
 
-  // Check if we have enough data
-  if (dlength <= 1000) {
+  // Check if we have enough data (reduced minimum requirement)
+  if (dlength < 100) {
     // Remove existing bars with transition
     svg
       .selectAll("rect")
@@ -359,6 +289,14 @@ function drawHistogram(data, dlength, previousBins = null) {
     // Remove existing axes with transition
     svg
       .selectAll(".x-axis, .y-axis")
+      .transition()
+      .duration(750)
+      .style("opacity", 0)
+      .remove();
+
+    // Remove existing density line
+    svg
+      .selectAll(".density-line")
       .transition()
       .duration(750)
       .style("opacity", 0)
@@ -377,13 +315,13 @@ function drawHistogram(data, dlength, previousBins = null) {
       .attr("font-size", "18px")
       .attr("font-weight", "bold")
       .style("opacity", 0)
-      .text("Not enough data (minimum 1,000 samples required)")
+      .text("Not enough data (minimum 100 samples required)")
       .transition()
       .duration(750)
       .style("opacity", 1);
 
     noDataMessage
-      .text("Not enough data (minimum 1,000 samples required)")
+      .text("Not enough data (minimum 100 samples required)")
       .transition()
       .duration(750)
       .style("opacity", 1);
@@ -422,19 +360,46 @@ function drawHistogram(data, dlength, previousBins = null) {
     .style("opacity", 0)
     .remove();
 
-  const x = d3.scaleLinear().domain([0.55, 1.5]).range([0, width]);
+  // Define x scale with improved domain range based on data
+  const xExtent = d3.extent(data, (d) => d.RER);
+  const padding = (xExtent[1] - xExtent[0]) * 0.05; // 5% padding
 
+  const x = d3
+    .scaleLinear()
+    .domain([Math.max(0.55, xExtent[0] - padding), xExtent[1] + padding])
+    .range([0, width]);
+
+  // Exactly 50 bins for the histogram
   const histogram = d3
     .bin()
     .value((d) => d.RER)
     .domain(x.domain())
-    .thresholds(x.ticks(50));
+    .thresholds(x.ticks(30));
 
   const bins = histogram(data);
 
+  // Calculate the bin width
+  const binWidth = bins.length > 0 ? bins[0].x1 - bins[0].x0 : 0.02;
+
+  // Calculate proper histogram densities
+  // First get the total count
+  let totalCount = 0;
+  bins.forEach((bin) => {
+    totalCount += bin.length;
+  });
+
+  // Then calculate density for each bin
+  bins.forEach((bin) => {
+    // Density = count / (N * bin_width)
+    bin.density = bin.length / (totalCount * binWidth);
+  });
+
+  // Define y scale for density
+  const yMax = d3.max(bins, (d) => d.density);
+
   const y = d3
     .scaleLinear()
-    .domain([0, d3.max(bins, (d) => d.length)])
+    .domain([0, yMax * 1.05]) // Add 5% padding
     .nice()
     .range([height, 0]);
 
@@ -449,7 +414,7 @@ function drawHistogram(data, dlength, previousBins = null) {
     .attr("class", "x-axis")
     .attr("transform", `translate(0,${height})`)
     .style("opacity", 0)
-    .call(d3.axisBottom(x))
+    .call(d3.axisBottom(x).tickFormat(d3.format(".2f")))
     .transition()
     .duration(750)
     .style("opacity", 1);
@@ -459,18 +424,49 @@ function drawHistogram(data, dlength, previousBins = null) {
     .append("g")
     .attr("class", "y-axis")
     .style("opacity", 0)
-    .call(d3.axisLeft(y))
+    .call(d3.axisLeft(y).ticks(5).tickFormat(d3.format(".3f")))
     .transition()
     .duration(750)
     .style("opacity", 1);
 
   // Update existing axes
-  xAxis.transition().duration(750).call(d3.axisBottom(x)).style("opacity", 1);
+  xAxis
+    .transition()
+    .duration(750)
+    .call(d3.axisBottom(x).tickFormat(d3.format(".2f")))
+    .style("opacity", 1);
 
-  yAxis.transition().duration(750).call(d3.axisLeft(y)).style("opacity", 1);
+  yAxis
+    .transition()
+    .duration(750)
+    .call(d3.axisLeft(y).ticks(5).tickFormat(d3.format(".3f")))
+    .style("opacity", 1);
 
-  // Update bars with transition
-  const bars = svg.selectAll("rect").data(bins);
+  // Style the axes
+  svg
+    .selectAll(".domain, .tick line")
+    .attr("stroke", "#888")
+    .attr("stroke-width", 1);
+
+  svg.selectAll(".tick text").attr("fill", "#333").attr("font-size", "12px");
+
+  // Grid lines
+  svg.selectAll(".y-grid-line").remove();
+  svg
+    .selectAll(".y-grid-line")
+    .data(y.ticks(5))
+    .enter()
+    .append("line")
+    .attr("class", "y-grid-line")
+    .attr("x1", 0)
+    .attr("x2", width)
+    .attr("y1", (d) => y(d))
+    .attr("y2", (d) => y(d))
+    .attr("stroke", "#eee")
+    .attr("stroke-width", 1);
+
+  // Update bars with transition for density
+  const bars = svg.selectAll(".histogram-bar").data(bins);
 
   // Remove old bars
   bars
@@ -481,37 +477,84 @@ function drawHistogram(data, dlength, previousBins = null) {
     .attr("height", 0)
     .remove();
 
-  // Update existing bars
+  // Update existing bars to show density
   bars
     .transition()
     .duration(750)
+    .attr("class", "histogram-bar")
     .attr("x", (d) => x(d.x0))
-    .attr("y", (d) => y(d.length))
-    .attr("width", (d) => x(d.x1) - x(d.x0) - 1)
-    .attr("height", (d) => height - y(d.length))
-    .attr("fill", getBarColor());
+    .attr("y", (d) => y(d.density))
+    .attr("width", (d) => Math.max(0, x(d.x1) - x(d.x0) - 1))
+    .attr("height", (d) => height - y(d.density))
+    .attr("fill", getBarColor())
+    .attr("opacity", 0.7)
+    .attr("stroke", "white")
+    .attr("stroke-width", 0.5);
 
   // Add new bars
   bars
     .enter()
     .append("rect")
+    .attr("class", "histogram-bar")
     .attr("x", (d) => x(d.x0))
     .attr("y", height)
-    .attr("width", (d) => x(d.x1) - x(d.x0) - 1)
+    .attr("width", (d) => Math.max(0, x(d.x1) - x(d.x0) - 1))
     .attr("height", 0)
     .attr("fill", getBarColor())
+    .attr("opacity", 0.7)
+    .attr("stroke", "white")
+    .attr("stroke-width", 0.5)
     .transition()
     .duration(750)
-    .attr("y", (d) => y(d.length))
-    .attr("height", (d) => height - y(d.length));
+    .attr("y", (d) => y(d.density))
+    .attr("height", (d) => height - y(d.density));
 
-  // Update tooltip
+  // Calculate KDE - using the same scale as the histogram
+  const filteredValues = data.map((d) => d.RER).filter((d) => !isNaN(d));
+
+  // Use Scott's rule for bandwidth calculation
+  const stdDev = d3.deviation(filteredValues) || 0.01;
+  const bandwidth = 1.06 * stdDev * Math.pow(filteredValues.length, -0.2);
+
+  // Generate KDE data points
+  const kde = generateKDE(filteredValues, bandwidth, x.domain(), 200);
+
+  // Remove existing density line
+  svg.selectAll(".density-line").remove();
+
+  // Add new density line
   svg
-    .selectAll("rect")
+    .append("path")
+    .attr("class", "density-line")
+    .datum(kde)
+    .attr("fill", "none")
+    .attr("stroke", "#111")
+    .attr("stroke-width", 1.5)
+    .attr("stroke-opacity", 0.8)
+    .attr(
+      "d",
+      d3
+        .line()
+        .curve(d3.curveBasis)
+        .x((d) => x(d[0]))
+        .y((d) => y(d[1]))
+    )
+    .style("opacity", 0)
+    .transition()
+    .duration(750)
+    .style("opacity", 1);
+
+  // Update tooltip to show density
+  svg
+    .selectAll(".histogram-bar")
     .on("mouseover", (event, d) =>
       tooltip.style("visibility", "visible").html(
-        `Count: ${d.length}<br>
-           Range: ${d.x0.toFixed(2)} - ${d.x1.toFixed(2)}`
+        `<strong>RER Range:</strong> ${d.x0.toFixed(2)} - ${d.x1.toFixed(2)}<br>
+         <strong>Count:</strong> ${d.length}<br>
+         <strong>Density:</strong> ${d.density.toFixed(4)}<br>
+         <strong>% of Data:</strong> ${((d.length / dlength) * 100).toFixed(
+           1
+         )}%`
       )
     )
     .on("mousemove", (event) =>
@@ -523,4 +566,33 @@ function drawHistogram(data, dlength, previousBins = null) {
 
   // Store current bins for next comparison
   window.previousBins = bins;
+}
+
+// Generate KDE (Kernel Density Estimation) points
+function generateKDE(data, bandwidth, domain, numPoints) {
+  // Create equally spaced points for evaluation
+  const points = [];
+  const step = (domain[1] - domain[0]) / numPoints;
+
+  for (let i = 0; i <= numPoints; i++) {
+    const x = domain[0] + i * step;
+    points.push(x);
+  }
+
+  // Calculate density at each point using Gaussian kernel
+  const densities = points.map((point) => {
+    let sum = 0;
+    data.forEach((value) => {
+      // Use Gaussian kernel
+      const z = (point - value) / bandwidth;
+      if (Math.abs(z) <= 4) {
+        // Only consider points within 4 standard deviations
+        sum += Math.exp(-0.5 * z * z);
+      }
+    });
+    // Normalize by bandwidth and data length
+    return [point, sum / (data.length * bandwidth * Math.sqrt(2 * Math.PI))];
+  });
+
+  return densities;
 }
