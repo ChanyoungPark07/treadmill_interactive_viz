@@ -213,11 +213,11 @@ function drawHistogram(data, dlength) {
   const getBarColor = () => {
     switch (currentSex) {
       case "Male":
-        return "#4682B4"; // Steel blue - more muted and professional
+        return "#5D8AA8"; // Air Force blue - neutral color for combined data
       case "Female":
         return "#DB7093"; // Pale violet red - more muted and professional
       default:
-        return "#5D8AA8"; // Air Force blue - neutral color for combined data
+        return "#69b3a2";
     }
   };
 
