@@ -1,7 +1,7 @@
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm";
 
 // Define dimensions and margins for the chart
-const width = 1000,
+const width = 900,
   height = 600,
   margin = { top: 70, right: 120, bottom: 70, left: 80 };
 
@@ -141,8 +141,6 @@ d3.csv("merged.csv")
       }
     ).flat();
 
-    console.log("Binned data sample:", binnedData.slice(0, 5));
-
     // Set up scales
     const xScale = d3
       .scaleLinear()
@@ -213,6 +211,9 @@ d3.csv("merged.csv")
       .attr("stroke-width", 1)
       .attr("opacity", 0.3);
 
+    // Calculate default radius for each point based on count
+    const calculateRadius = (count) => Math.min(5, 5 + Math.sqrt(count));
+
     // Add scatter plot points
     svg
       .selectAll(".point")
@@ -222,7 +223,7 @@ d3.csv("merged.csv")
       .attr("class", "point")
       .attr("cx", (d) => xScale(d.time_bin))
       .attr("cy", (d) => yScale(d.speed_bin))
-      .attr("r", (d) => Math.min(10, 5 + Math.sqrt(d.count))) // Larger radius for bins with more data points
+      .attr("r", (d) => calculateRadius(d.count)) // Store the original radius calculation
       .attr("fill", (d) => reversedColorScale(d.RER))
       .attr("stroke", "#fff")
       .attr("stroke-width", 1)
@@ -244,11 +245,12 @@ d3.csv("merged.csv")
           <strong>Data points:</strong> ${d.count}
         `);
       })
-      .on("mouseout", function () {
+      .on("mouseout", function (event, d) {
+        // Use the same calculation as initial radius
         d3.select(this)
           .transition()
           .duration(200)
-          .attr("r", (d) => Math.min(10, 5 + Math.sqrt(d.count)))
+          .attr("r", (d) => calculateRadius(d.count))
           .attr("opacity", 0.8);
 
         tooltip.style("visibility", "hidden");

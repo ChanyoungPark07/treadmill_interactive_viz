@@ -15,57 +15,61 @@ const infoTooltip = d3
   .style("max-width", "250px")
   .style("font-size", "12px");
 
-// Add info icons next to labels
+// Add info icons next to labels if they exist
 const coolingLabel = d3.select("label[for='resting']");
-coolingLabel
-  .style("display", "inline-flex")
-  .style("align-items", "center")
-  .append("span")
-  .attr("class", "info-icon")
-  .style("margin-left", "5px")
-  .style("cursor", "help")
-  .style("color", "#666")
-  .html(" ⓘ")
-  .on("mouseover", (event) => {
-    infoTooltip
-      .style("visibility", "visible")
-      .html(
-        "Cooldown refers to the final phase of the run, during which they ran at 5 km/h after reaching max speed."
-      )
-      .style("top", event.pageY - 10 + "px")
-      .style("left", event.pageX + 10 + "px");
-  })
-  .on("mouseout", () => {
-    infoTooltip.style("visibility", "hidden");
-  });
+if (!coolingLabel.empty()) {
+  coolingLabel
+    .style("display", "inline-flex")
+    .style("align-items", "center")
+    .append("span")
+    .attr("class", "info-icon")
+    .style("margin-left", "5px")
+    .style("cursor", "help")
+    .style("color", "#666")
+    .html(" ⓘ")
+    .on("mouseover", (event) => {
+      infoTooltip
+        .style("visibility", "visible")
+        .html(
+          "Cooldown refers to the final phase of the run, during which they ran at 5 km/h after reaching max speed."
+        )
+        .style("top", event.pageY - 10 + "px")
+        .style("left", event.pageX + 10 + "px");
+    })
+    .on("mouseout", () => {
+      infoTooltip.style("visibility", "hidden");
+    });
+}
 
 const speedLabel = d3.select("label[for='speed']");
-speedLabel
-  .style("display", "inline-flex")
-  .style("align-items", "center")
-  .append("span")
-  .attr("class", "info-icon")
-  .style("margin-left", "5px")
-  .style("cursor", "help")
-  .style("color", "#666")
-  .html(" ⓘ")
-  .on("mouseover", (event) => {
-    infoTooltip
-      .style("visibility", "visible")
-      .html(
-        "The running speed was strictly increasing throughout the experiment, so higher speeds are related to longer running times."
-      )
-      .style("top", event.pageY - 10 + "px")
-      .style("left", event.pageX + 10 + "px");
-  })
-  .on("mouseout", () => {
-    infoTooltip.style("visibility", "hidden");
-  });
+if (!speedLabel.empty()) {
+  speedLabel
+    .style("display", "inline-flex")
+    .style("align-items", "center")
+    .append("span")
+    .attr("class", "info-icon")
+    .style("margin-left", "5px")
+    .style("cursor", "help")
+    .style("color", "#666")
+    .html(" ⓘ")
+    .on("mouseover", (event) => {
+      infoTooltip
+        .style("visibility", "visible")
+        .html(
+          "The running speed was strictly increasing throughout the experiment, so higher speeds are related to longer running times."
+        )
+        .style("top", event.pageY - 10 + "px")
+        .style("left", event.pageX + 10 + "px");
+    })
+    .on("mouseout", () => {
+      infoTooltip.style("visibility", "hidden");
+    });
+}
 
 // Define margins with more space for bottom
 const margin = { top: 50, right: 30, bottom: 70, left: 80 };
 
-// Create responsive SVG with adjusted viewBox
+// Create responsive SVG with adjusted viewBox - use the correct ID
 const svg = d3
   .select("#hist1_chart")
   .attr("preserveAspectRatio", "xMinYMin meet")
@@ -100,9 +104,6 @@ d3.csv("merged.csv").then((data) => {
     d.Sex = +d.Sex;
     d.Weight = +d.Weight;
     d.Height = +d.Height;
-    d.Temperature = +d.Temperature;
-    d.Speed = +d.Speed;
-    d.Resting = +d.Resting;
   });
 
   drawHistogram(data, data.length);
@@ -111,10 +112,11 @@ d3.csv("merged.csv").then((data) => {
 
 // Setup
 function setupFilters(data) {
-  const ageSelect = d3.select("#age");
+  // Use the correct IDs from your HTML
+  const ageSelect = d3.select("#age-filter");
   const sexSelect = d3.select("#sex");
-  const weightSelect = d3.select("#weight");
-  const heightSelect = d3.select("#height");
+  const weightSelect = d3.select("#weight-filter");
+  const heightSelect = d3.select("#height-filter");
 
   function updateFilters() {
     const ageVal = ageSelect.node().value;
@@ -369,7 +371,7 @@ function drawHistogram(data, dlength) {
     .domain([Math.max(0.55, xExtent[0] - padding), xExtent[1] + padding])
     .range([0, width]);
 
-  // Exactly 50 bins for the histogram
+  // Exactly 30 bins for the histogram
   const histogram = d3
     .bin()
     .value((d) => d.RER)
