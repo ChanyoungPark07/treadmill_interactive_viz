@@ -77,6 +77,15 @@ const svg = d3
   .append("g")
   .attr("transform", `translate(${margin.left},${margin.top})`);
 
+// IMPORTANT: Create layered groups for proper rendering order
+// Background layer for grid lines
+const gridGroup = svg.append("g").attr("class", "grid-layer");
+// Middle layer for data bars
+const barsGroup = svg.append("g").attr("class", "bars-layer");
+// Top layer for axes and density line
+const axesGroup = svg.append("g").attr("class", "axes-layer");
+const lineGroup = svg.append("g").attr("class", "line-layer");
+
 // Calculate dimensions based on viewBox
 const width = 800 - margin.left - margin.right;
 const height = 500 - margin.top - margin.bottom;
@@ -237,7 +246,7 @@ function drawHistogram(data, dlength) {
       size: "14px",
     },
     "y-label": {
-      text: "Density",
+      text: "Density %",
       x: -height / 2,
       y: -60,
       size: "14px",
@@ -280,7 +289,7 @@ function drawHistogram(data, dlength) {
   // Check if we have enough data (reduced minimum requirement)
   if (dlength < 100) {
     // Remove existing bars with transition
-    svg
+    barsGroup
       .selectAll("rect")
       .transition()
       .duration(750)
@@ -289,7 +298,7 @@ function drawHistogram(data, dlength) {
       .remove();
 
     // Remove existing axes with transition
-    svg
+    axesGroup
       .selectAll(".x-axis, .y-axis")
       .transition()
       .duration(750)
@@ -297,12 +306,15 @@ function drawHistogram(data, dlength) {
       .remove();
 
     // Remove existing density line
-    svg
+    lineGroup
       .selectAll(".density-line")
       .transition()
       .duration(750)
       .style("opacity", 0)
       .remove();
+
+    // Remove grid lines
+    gridGroup.selectAll(".y-grid-line").remove();
 
     // Update or add message
     const noDataMessage = svg.selectAll(".no-data-message").data([1]);
@@ -405,9 +417,24 @@ function drawHistogram(data, dlength) {
     .nice()
     .range([height, 0]);
 
+  // Clear and update grid lines in the grid group (lowest layer)
+  gridGroup.selectAll(".y-grid-line").remove();
+  gridGroup
+    .selectAll(".y-grid-line")
+    .data(y.ticks(5))
+    .enter()
+    .append("line")
+    .attr("class", "y-grid-line")
+    .attr("x1", 0)
+    .attr("x2", width)
+    .attr("y1", (d) => y(d))
+    .attr("y2", (d) => y(d))
+    .attr("stroke", "#eee")
+    .attr("stroke-width", 1);
+
   // Update axes with transition
-  const xAxis = svg.selectAll(".x-axis").data([1]);
-  const yAxis = svg.selectAll(".y-axis").data([1]);
+  const xAxis = axesGroup.selectAll(".x-axis").data([1]);
+  const yAxis = axesGroup.selectAll(".y-axis").data([1]);
 
   // Enter new axes
   xAxis
@@ -445,30 +472,18 @@ function drawHistogram(data, dlength) {
     .style("opacity", 1);
 
   // Style the axes
-  svg
+  axesGroup
     .selectAll(".domain, .tick line")
     .attr("stroke", "#888")
     .attr("stroke-width", 1);
 
-  svg.selectAll(".tick text").attr("fill", "#333").attr("font-size", "12px");
+  axesGroup
+    .selectAll(".tick text")
+    .attr("fill", "#333")
+    .attr("font-size", "12px");
 
-  // Grid lines
-  svg.selectAll(".y-grid-line").remove();
-  svg
-    .selectAll(".y-grid-line")
-    .data(y.ticks(5))
-    .enter()
-    .append("line")
-    .attr("class", "y-grid-line")
-    .attr("x1", 0)
-    .attr("x2", width)
-    .attr("y1", (d) => y(d))
-    .attr("y2", (d) => y(d))
-    .attr("stroke", "#eee")
-    .attr("stroke-width", 1);
-
-  // Update bars with transition for density
-  const bars = svg.selectAll(".histogram-bar").data(bins);
+  // Update bars with transition for density in the bars group (middle layer)
+  const bars = barsGroup.selectAll(".histogram-bar").data(bins);
 
   // Remove old bars
   bars
@@ -522,10 +537,10 @@ function drawHistogram(data, dlength) {
   const kde = generateKDE(filteredValues, bandwidth, x.domain(), 200);
 
   // Remove existing density line
-  svg.selectAll(".density-line").remove();
+  lineGroup.selectAll(".density-line").remove();
 
-  // Add new density line
-  svg
+  // Add new density line to the line group (top layer)
+  lineGroup
     .append("path")
     .attr("class", "density-line")
     .datum(kde)
@@ -547,7 +562,7 @@ function drawHistogram(data, dlength) {
     .style("opacity", 1);
 
   // Update tooltip to show density
-  svg
+  barsGroup
     .selectAll(".histogram-bar")
     .on("mouseover", (event, d) =>
       tooltip.style("visibility", "visible").html(

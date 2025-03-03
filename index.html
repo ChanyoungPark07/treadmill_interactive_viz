@@ -67,14 +67,13 @@
     </div>
 
     <div class="custom_person">
-      <h3>Enter Your Information</h3>
+      <h3>Enter Your Information to Predict Your RER</h3>
 
       <div class="form-group">
         <label for="gender">Gender:</label>
         <select id="gender" name="gender">
           <option value="male">Male</option>
           <option value="female">Female</option>
-          <option value="other">Other</option>
         </select>
       </div>
 
@@ -104,10 +103,10 @@
     <div class="chart-container">
       <svg id="scatter_chart"></svg>
     </div>
-    
+<!-- 
     <div class="chart-container">
-      <svg id="hist2_chart"></svg>
-    </div>
+      <svg id="violin_plot"></svg>
+    </div> -->
 
   </div>
 
@@ -120,6 +119,6 @@
 
   <script src="hist1.js" type="module"></script>
   <script src="scatter.js" type="module"></script>
-  <script src="hist2.js" type="module"></script>
+  <script src="violin.js" type="module"></script>
 </body>
 </html>
