@@ -405,6 +405,21 @@ select:disabled {
   background-color: #e9ecef;
 }
 
+.custom_person .erase-draw {
+  background-color: #f8f9fa;
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+}
+
+.custom_person .erase-drawn:hover {
+  background-color: #e9ecef;
+}
+
+svg text {
+  user-select: none;
+  pointer-events: none;
+}
+
 /* Responsive adjustments */
 @media screen and (max-width: 768px) {
   .custom_person {

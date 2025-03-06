@@ -318,6 +318,17 @@ function createScatterPlot(gender, age, weight, height) {
   svg.selectAll(".highlight-point").remove();
   svg.selectAll("defs").remove();
 
+
+  const drawLayer = svg.append("g").attr("class", "draw-layer");
+  // Variables to track drawing state
+  let isDrawing = false;
+  let currentPath = null;
+  let pathData = [];
+
+  document.querySelector(".erase-draw").addEventListener("click", function() {
+    drawLayer.selectAll("path").remove(); // Remove all drawn paths
+  });
+    
   // Load and process the data
   Promise.all([d3.json("model_weights.json"), d3.csv("merged.csv")])
     .then(([modelWeights, data]) => {
@@ -557,6 +568,65 @@ function createScatterPlot(gender, age, weight, height) {
         const predictedRER = calculateRER(model.weights, time, avgSpeed);
         return { time, avgSpeed, predictedRER };
       }).sort((a, b) => a.time - b.time);
+
+      
+      function startDrawing(event) {
+        isDrawing = true;
+
+        document.body.style.pointerEvents = "none";
+        svg.style("pointer-events", "all"); // Allow SVG interactions
+      
+        const [x, y] = d3.pointer(event);
+      
+        // Create a new path element
+        currentPath = drawLayer.append("path")
+          .attr("fill", "none")
+          .attr("stroke", "black") // Line color
+          .attr("stroke-width", 6) // Line thickness
+          .attr("stroke-linecap", "round")
+          .attr("stroke-linejoin", "round")
+          .attr("d", `M ${x},${y}`); // Move to the starting point
+      
+        // Store initial point
+        pathData = [[x, y]];
+      }
+      
+      // Function to update drawing as the user moves the mouse
+      function updateDrawing(event) {
+        if (!isDrawing) return;
+        const [x, y] = d3.pointer(event);
+      
+        // Add new point to the path
+        pathData.push([x, y]);
+      
+        // Update the path's "d" attribute
+        currentPath.attr("d", d3.line().curve(d3.curveBasis)(pathData));
+      }
+      
+      // Function to finish drawing
+      function endDrawing() {
+        drawLayer.append("path")
+        .attr("fill", "none")
+        .attr("stroke", "red") // New line color (change as needed)
+        .attr("stroke-width", 2) // Thickness can be adjusted
+        .attr("stroke-linecap", "round")
+        .attr("stroke-linejoin", "round")
+        .attr("d", d3.line().curve(d3.curveBasis)(pathData))
+        .attr("opacity", 0.7); // Slight transparency to distinguish
+    
+    
+
+        if (!isDrawing) return;
+        isDrawing = false;
+
+        document.body.style.pointerEvents = "auto";
+
+      }
+      
+      // Attach mouse events to the SVG
+      svg.on("mousedown", startDrawing)
+        .on("mousemove", updateDrawing)
+        .on("mouseup", endDrawing);
 
       console.log("Regression data points:", regressionData.length);
 
