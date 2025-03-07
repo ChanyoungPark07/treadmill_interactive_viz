@@ -5,10 +5,14 @@ const width = 900,
   height = 600,
   margin = { top: 70, right: 120, bottom: 70, left: 80 };
 
+// Variable to track if drawing is enabled
+let drawingEnabled = false;
+
 // Add event listener to the Calculate button
 document.addEventListener("DOMContentLoaded", function () {
   const calculateBtn = document.querySelector(".predict-btn");
   const resetBtn = document.querySelector(".reset-btn");
+  const eraseBtn = document.querySelector(".erase-draw");
 
   // Set up the calculate button
   calculateBtn.addEventListener("click", function () {
@@ -34,6 +38,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Create the scatter plot with the provided inputs
     createScatterPlot(gender, age, weight, height);
+
+    // Enable drawing after calculation
+    drawingEnabled = true;
+    console.log("Drawing enabled");
   });
 
   // Set up the reset button
@@ -55,6 +63,13 @@ document.addEventListener("DOMContentLoaded", function () {
     svg.selectAll(".regression-line-overlay").remove();
     svg.selectAll(".highlight-point").remove();
 
+    // Clear any user drawings
+    svg.selectAll(".draw-layer").remove();
+
+    // Disable drawing
+    drawingEnabled = false;
+    console.log("Drawing disabled");
+
     // Add placeholder text again
     svg.selectAll(".placeholder-text").remove();
     svg
@@ -65,6 +80,12 @@ document.addEventListener("DOMContentLoaded", function () {
       .attr("text-anchor", "middle")
       .attr("font-size", "16px")
       .text("Enter your information and click 'Calculate' to view data");
+  });
+
+  // Set up the erase button
+  eraseBtn.addEventListener("click", function () {
+    svg.selectAll(".draw-layer path").remove();
+    console.log("Erased user drawings");
   });
 });
 
@@ -146,7 +167,7 @@ svg
   .attr("x", innerWidth / 2)
   .attr("y", innerHeight + 40)
   .attr("text-anchor", "middle")
-  .attr("font-size", "12px")
+  .attr("font-size", "14px")
   .text("Time (seconds)");
 
 svg
@@ -156,7 +177,7 @@ svg
   .attr("x", -innerHeight / 2)
   .attr("y", -50)
   .attr("text-anchor", "middle")
-  .attr("font-size", "12px")
+  .attr("font-size", "14px")
   .text("Speed (km/h)");
 
 // Set background color
@@ -317,24 +338,21 @@ function createScatterPlot(gender, age, weight, height) {
   svg.selectAll(".regression-line-overlay").remove();
   svg.selectAll(".highlight-point").remove();
   svg.selectAll("defs").remove();
+  svg.selectAll(".draw-layer").remove();
 
-
+  // Create drawing layer
   const drawLayer = svg.append("g").attr("class", "draw-layer");
+
   // Variables to track drawing state
   let isDrawing = false;
-  let userOutlinePath  = null;
+  let userOutlinePath = null;
   let freePathData = [];
-  let userPath = null;
 
-  const pathLineGenerator = d3.line()
-  .x(d => d[0]) // X-coordinate
-  .y(d => d[1]) // Y-coordinate
+  const pathLineGenerator = d3
+    .line()
+    .x((d) => d[0]) // X-coordinate
+    .y((d) => d[1]); // Y-coordinate
 
-
-  document.querySelector(".erase-draw").addEventListener("click", function() {
-    drawLayer.selectAll("path").remove(); // Remove all drawn paths
-  });
-    
   // Load and process the data
   Promise.all([d3.json("model_weights.json"), d3.csv("merged.csv")])
     .then(([modelWeights, data]) => {
@@ -353,6 +371,9 @@ function createScatterPlot(gender, age, weight, height) {
           .attr("text-anchor", "middle")
           .attr("font-size", "16px")
           .text("No matching model for your demographic profile");
+
+        // Disable drawing when no model is found
+        drawingEnabled = false;
         return;
       }
 
@@ -395,6 +416,9 @@ function createScatterPlot(gender, age, weight, height) {
           .attr("text-anchor", "middle")
           .attr("font-size", "16px")
           .text("No matching data for your demographic profile");
+
+        // Disable drawing when no data is found
+        drawingEnabled = false;
         return;
       }
 
@@ -475,7 +499,7 @@ function createScatterPlot(gender, age, weight, height) {
       const defs = svg.append("defs");
 
       // Create axes
-      const xAxis = d3.axisBottom(xScale);2
+      const xAxis = d3.axisBottom(xScale);
       const yAxis = d3.axisLeft(yScale);
 
       // Add X axis
@@ -522,51 +546,6 @@ function createScatterPlot(gender, age, weight, height) {
       // Calculate default radius for each point based on count
       const calculateRadius = (count) => Math.min(5, 5 + Math.sqrt(count));
 
-      // Add scatter plot points with appearance animation
-      svg
-        .selectAll(".point")
-        .data(binnedData)
-        .enter()
-        .append("circle")
-        .attr("class", "point")
-        .attr("cx", (d) => xScale(d.time_bin))
-        .attr("cy", (d) => yScale(d.speed_bin))
-        .attr("r", 0) // Start with radius 0 for animation
-        .attr("fill", (d) => reversedColorScale(d.RER))
-        .attr("stroke", "#fff")
-        .attr("stroke-width", 1)
-        .attr("opacity", 0.8)
-        .on("mouseover", function (event, d) {
-          d3.select(this)
-            .transition()
-            .duration(200)
-            .attr("r", (d) => Math.min(12, 7 + Math.sqrt(d.count)))
-            .attr("opacity", 1);
-
-          tooltip
-            .style("visibility", "visible")
-            .style("left", `${event.pageX + 10}px`)
-            .style("top", `${event.pageY - 10}px`).html(`
-            <strong>Time:</strong> ${d.time_bin} seconds<br>
-            <strong>Speed:</strong> ${d.speed_bin.toFixed(1)} km/h<br>
-            <strong>Average RER:</strong> ${d.RER.toFixed(3)}<br>
-            <strong>Data points:</strong> ${d.count}
-          `);
-        })
-        .on("mouseout", function (event, d) {
-          d3.select(this)
-            .transition()
-            .duration(200)
-            .attr("r", (d) => calculateRadius(d.count))
-            .attr("opacity", 0.8);
-
-          tooltip.style("visibility", "hidden");
-        })
-        .transition() // Animate points appearance
-        .duration(1000)
-        .delay((d, i) => i * 10)
-        .attr("r", (d) => calculateRadius(d.count));
-
       // Calculate average speeds at each time point to use in our regression line
       const timeGroups = d3.group(binnedData, (d) => d.time_bin);
       const regressionData = Array.from(timeGroups, ([time, values]) => {
@@ -574,83 +553,6 @@ function createScatterPlot(gender, age, weight, height) {
         const predictedRER = calculateRER(model.weights, time, avgSpeed);
         return { time, avgSpeed, predictedRER };
       }).sort((a, b) => a.time - b.time);
-
-      
-      function startDrawing(event) {
-        isDrawing = true;
-
-        document.body.style.pointerEvents = "none";
-        svg.style("pointer-events", "all"); // Allow SVG interactions
-      
-        const [x, y] = d3.pointer(event);
-      
-
-
-         const lineGradientId = "line-gradient-" + Date.now();
-         // Store initial point
-         freePathData = [[x, y]];
-        // Create a new path element
-        // Create an outline path (black stroke, just like the regression line)
-        userOutlinePath = drawLayer.append("path")
-          .datum(freePathData)
-          .attr("class", "user-line-outline")
-          .attr("fill", "none")
-          .attr("stroke", "#000") // Black outline
-          .attr("stroke-width", 6) // Thicker than main line
-          .attr("stroke-opacity", 0.5)
-          .attr("stroke-linecap", "round")
-          .attr("stroke-linejoin", "round")
-          .attr("d", pathLineGenerator);
-      }
-      
-      // Function to update drawing as the user moves the mouse
-      function updateDrawing(event) {
-        if (!isDrawing) return;
-        const [x, y] = d3.pointer(event);
-      
-        // Add new point to the path
-        freePathData.push([x, y]);
-      
-        // Update the path's "d" attribute
-        userOutlinePath.attr("d", d3.line().curve(d3.curveBasis)(freePathData));
-        // userPath.datum(freePathData).attr("d", lineGenerator);
-      }
-      
-      // Function to finish drawing
-      function endDrawing() {
-        if (!isDrawing) return;
-        isDrawing = false;
-
-        userOutlinePath = drawLayer.append("path")
-          .datum(freePathData)
-          .attr("class", "user-line-outline")
-          .attr("fill", "none")
-          .attr("stroke", "red") // Black outline
-          .attr("stroke-width", 4) // Thicker than main line
-          .attr("stroke-opacity", 0.5)
-          .attr("stroke-linecap", "round")
-          .attr("stroke-linejoin", "round")
-          .attr("d", pathLineGenerator);
-
-        document.body.style.pointerEvents = "auto";
-
-      }
-      
-      // Attach mouse events to the SVG
-      svg.on("mousedown", startDrawing)
-        .on("mousemove", updateDrawing)
-        .on("mouseup", endDrawing);
-
-      console.log("Regression data points:", regressionData.length);
-
-      // Add color stops to match the RdYlBu_r colormap for both legends
-      const colorStops = d3.range(0, 1.01, 0.1).map((t) => {
-        const rer = d3.quantile(rerExtent, t);
-        return {
-          offset: `${t * 100}%`,
-          color: reversedColorScale(rer),
-        };
-      });
 
       // Create a line generator for the regression line with more smoothing
       const lineGenerator = d3
@@ -689,8 +591,24 @@ function createScatterPlot(gender, age, weight, height) {
           .attr("stop-color", color);
       });
 
-      // Wait for points to appear before adding the regression line
-      setTimeout(() => {
+      // Add color stops to match the RdYlBu_r colormap for both legends
+      const colorStops = d3.range(0, 1.01, 0.1).map((t) => {
+        const rer = d3.quantile(rerExtent, t);
+        return {
+          offset: `${t * 100}%`,
+          color: reversedColorScale(rer),
+        };
+      });
+
+      // Variables to track animation completion
+      let totalPoints = binnedData.length;
+      let animatedPoints = 0;
+      let animationComplete = false;
+
+      // Function to create regression line - now separate
+      function createRegressionLine() {
+        console.log("Creating regression line");
+
         // First add the outline stroke
         const outlinePath = svg
           .append("path")
@@ -801,13 +719,13 @@ function createScatterPlot(gender, age, weight, height) {
                   .style("visibility", "visible")
                   .style("left", `${event.pageX + 10}px`)
                   .style("top", `${event.pageY - 10}px`).html(`
-                    <b>Regression Line</b><br>
-                    <strong>Time:</strong> ${time.toFixed(
-                      0
-                    )} seconds (${(time / 60).toFixed(1)} min)<br>
-                    <strong>Speed:</strong> ${speed.toFixed(1)} km/h<br>
-                    <strong>Predicted RER:</strong> ${exactRER.toFixed(3)}
-                  `);
+                  <b>Regression Line</b><br>
+                  <strong>Time:</strong> ${time.toFixed(
+                    0
+                  )} seconds (${(time / 60).toFixed(1)} min)<br>
+                  <strong>Speed:</strong> ${speed.toFixed(1)} km/h<br>
+                  <strong>Predicted RER:</strong> ${exactRER.toFixed(3)}
+                `);
 
                 // Highlight the point on the regression line
                 svg.selectAll(".highlight-point").remove();
@@ -830,129 +748,373 @@ function createScatterPlot(gender, age, weight, height) {
                 // Remove highlight
                 svg.selectAll(".highlight-point").remove();
               });
+
+            // After regression line is complete, add legends
+            addLegends();
           });
-      }, 1200); // Wait for points to appear
+      }
 
-      // Add a legend entry for the regression line - now with gradient and outline
-      const legendGroup = svg
-        .append("g")
-        .attr("class", "legend")
-        .attr("transform", `translate(${innerWidth - 180}, 20)`);
+      // Function to add legends - now separate
+      function addLegends() {
+        console.log("Adding legends");
 
-      // Create a small gradient for the legend - with explicit ID for browser compatibility
-      const legendLineGradientId = "legend-line-gradient-" + Date.now();
-      const legendLineGradient = defs
-        .append("linearGradient")
-        .attr("id", legendLineGradientId)
-        .attr("gradientUnits", "userSpaceOnUse")
-        .attr("x1", "0")
-        .attr("y1", "0")
-        .attr("x2", "30")
-        .attr("y2", "0");
+        // Create a small gradient for the legend - with explicit ID for browser compatibility
+        const legendLineGradientId = "legend-line-gradient-" + Date.now();
+        const legendLineGradient = defs
+          .append("linearGradient")
+          .attr("id", legendLineGradientId)
+          .attr("gradientUnits", "userSpaceOnUse")
+          .attr("x1", "0")
+          .attr("y1", "0")
+          .attr("x2", "30")
+          .attr("y2", "0");
 
-      // Add more explicit color stops for the legend gradient
-      const legendColors = [
-        "#3060cf",
-        "#5090df",
-        "#80b0ef",
-        "#ffee99",
-        "#ffc066",
-        "#ff8833",
-        "#cf3030",
-      ];
-      legendColors.forEach((color, i) => {
-        legendLineGradient
-          .append("stop")
-          .attr("offset", `${i * (100 / 6)}%`)
-          .attr("stop-color", color);
-      });
+        // Add more explicit color stops for the legend gradient
+        const legendColors = [
+          "#3060cf",
+          "#5090df",
+          "#80b0ef",
+          "#ffee99",
+          "#ffc066",
+          "#ff8833",
+          "#cf3030",
+        ];
+        legendColors.forEach((color, i) => {
+          legendLineGradient
+            .append("stop")
+            .attr("offset", `${i * (100 / 6)}%`)
+            .attr("stop-color", color);
+        });
 
-      // Add the outline for the legend line
-      legendGroup
-        .append("line")
-        .attr("x1", 0)
-        .attr("y1", -35)
-        .attr("x2", 30)
-        .attr("y2", -35)
-        .attr("stroke", "#000")
-        .attr("stroke-opacity", 0.5)
-        .attr("stroke-width", 6);
+        // Add a legend entry for the regression line
+        const legendGroup = svg
+          .append("g")
+          .attr("class", "legend")
+          .attr("transform", `translate(${innerWidth - 180}, 20)`);
 
-      // Add the colored line for the legend with updated gradient reference
-      legendGroup
-        .append("line")
-        .attr("x1", 0)
-        .attr("y1", -35)
-        .attr("x2", 30)
-        .attr("y2", -35)
-        .attr("stroke", `url(#${legendLineGradientId})`)
-        .attr("stroke-width", 4);
+        // Add the outline for the legend line
+        legendGroup
+          .append("line")
+          .attr("x1", 0)
+          .attr("y1", -35)
+          .attr("x2", 30)
+          .attr("y2", -35)
+          .attr("stroke", "#000")
+          .attr("stroke-opacity", 0.5)
+          .attr("stroke-width", 6);
 
-      legendGroup
-        .append("text")
-        .attr("x", 35)
-        .attr("y", -30)
-        .attr("text-anchor", "start")
-        .text("Model Regression Line");
+        // Add the colored line for the legend with updated gradient reference
+        legendGroup
+          .append("line")
+          .attr("x1", 0)
+          .attr("y1", -35)
+          .attr("x2", 30)
+          .attr("y2", -35)
+          .attr("stroke", `url(#${legendLineGradientId})`)
+          .attr("stroke-width", 4);
 
-      // Add color legend for RER values
-      const legendWidth = 30;
-      const legendHeight = innerHeight;
+        legendGroup
+          .append("text")
+          .attr("x", 35)
+          .attr("y", -30)
+          .attr("text-anchor", "start")
+          .text("Model Regression Line");
 
-      const legendScale = d3
-        .scaleLinear()
-        .domain(rerExtent)
-        .range([legendHeight, 0]);
+        // Add color legend for RER values
+        const legendWidth = 30;
+        const legendHeight = innerHeight;
 
-      const legendAxis = d3
-        .axisRight(legendScale)
-        .ticks(8)
-        .tickFormat(d3.format(".2f"));
+        const legendScale = d3
+          .scaleLinear()
+          .domain(rerExtent)
+          .range([legendHeight, 0]);
 
-      const legend = svg
-        .append("g")
-        .attr("class", "legend")
-        .attr("transform", `translate(${innerWidth + 20}, 0)`);
+        const legendAxis = d3
+          .axisRight(legendScale)
+          .ticks(8)
+          .tickFormat(d3.format(".2f"));
 
-      // Create gradient for legend
-      const linearGradient = defs
-        .append("linearGradient")
-        .attr("id", "rer-gradient")
-        .attr("x1", "0%")
-        .attr("y1", "100%")
-        .attr("x2", "0%")
-        .attr("y2", "0%");
+        const legend = svg
+          .append("g")
+          .attr("class", "legend")
+          .attr("transform", `translate(${innerWidth + 20}, 0)`);
 
-      // Add color stops to match the RdYlBu_r colormap
-      colorStops.forEach((stop) => {
-        linearGradient
-          .append("stop")
-          .attr("offset", stop.offset)
-          .attr("stop-color", stop.color);
-      });
+        // Create gradient for legend
+        const linearGradient = defs
+          .append("linearGradient")
+          .attr("id", "rer-gradient")
+          .attr("x1", "0%")
+          .attr("y1", "100%")
+          .attr("x2", "0%")
+          .attr("y2", "0%");
 
-      // Draw the gradient rectangle
-      legend
-        .append("rect")
-        .attr("width", legendWidth)
-        .attr("height", legendHeight)
-        .style("fill", "url(#rer-gradient)");
+        // Add color stops to match the RdYlBu_r colormap
+        colorStops.forEach((stop) => {
+          linearGradient
+            .append("stop")
+            .attr("offset", stop.offset)
+            .attr("stop-color", stop.color);
+        });
 
-      // Add the legend axis
-      legend
-        .append("g")
-        .attr("transform", `translate(${legendWidth}, 0)`)
-        .call(legendAxis);
+        // Draw the gradient rectangle
+        legend
+          .append("rect")
+          .attr("width", legendWidth)
+          .attr("height", legendHeight)
+          .style("fill", "url(#rer-gradient)");
 
-      // Add legend title
-      legend
-        .append("text")
-        .attr("transform", "rotate(90)")
-        .attr("x", legendHeight / 2)
-        .attr("y", -legendWidth - 45)
-        .attr("text-anchor", "middle")
-        .attr("font-size", "12px")
-        .text("Average RER (VCO2/VO2)");
+        // Add the legend axis
+        legend
+          .append("g")
+          .attr("transform", `translate(${legendWidth}, 0)`)
+          .call(legendAxis);
+
+        // Add legend title
+        legend
+          .append("text")
+          .attr("transform", "rotate(90)")
+          .attr("x", legendHeight / 2)
+          .attr("y", -legendWidth - 45)
+          .attr("text-anchor", "middle")
+          .attr("font-size", "12px")
+          .text("Average RER (VCO2/VO2)");
+      }
+
+      // Add scatter plot points with appearance animation
+      svg
+        .selectAll(".point")
+        .data(binnedData)
+        .enter()
+        .append("circle")
+        .attr("class", "point")
+        .attr("cx", (d) => xScale(d.time_bin))
+        .attr("cy", (d) => yScale(d.speed_bin))
+        .attr("r", 0) // Start with radius 0 for animation
+        .attr("fill", (d) => reversedColorScale(d.RER))
+        .attr("stroke", "#fff")
+        .attr("stroke-width", 1)
+        .attr("opacity", 0.8)
+        .on("mouseover", function (event, d) {
+          d3.select(this)
+            .transition()
+            .duration(200)
+            .attr("r", (d) => Math.min(12, 7 + Math.sqrt(d.count)))
+            .attr("opacity", 1);
+
+          tooltip
+            .style("visibility", "visible")
+            .style("left", `${event.pageX + 10}px`)
+            .style("top", `${event.pageY - 10}px`).html(`
+            <strong>Time:</strong> ${d.time_bin} seconds<br>
+            <strong>Speed:</strong> ${d.speed_bin.toFixed(1)} km/h<br>
+            <strong>Average RER:</strong> ${d.RER.toFixed(3)}<br>
+            <strong>Data points:</strong> ${d.count}
+          `);
+        })
+        .on("mouseout", function (event, d) {
+          d3.select(this)
+            .transition()
+            .duration(200)
+            .attr("r", (d) => calculateRadius(d.count))
+            .attr("opacity", 0.8);
+
+          tooltip.style("visibility", "hidden");
+        })
+        .transition() // Animate points appearance
+        .duration(1000)
+        .delay((d, i) => i * 10)
+        .attr("r", (d) => calculateRadius(d.count))
+        .on("end", function (d, i) {
+          animatedPoints++;
+
+          // When the last point is done animating, create the regression line
+          if (animatedPoints === totalPoints && !animationComplete) {
+            animationComplete = true; // Prevent multiple calls
+            console.log("All points animated, now creating regression line");
+            createRegressionLine();
+          }
+        });
+
+      // Function to start drawing
+      function startDrawing(event) {
+        // Only allow drawing if enabled
+        if (!drawingEnabled) {
+          console.log("Drawing is currently disabled");
+          return;
+        }
+
+        isDrawing = true;
+
+        document.body.style.pointerEvents = "none";
+        svg.style("pointer-events", "all"); // Allow SVG interactions
+
+        const [x, y] = d3.pointer(event);
+
+        // Store initial point
+        freePathData = [[x, y]];
+
+        // Create an outline path
+        userOutlinePath = drawLayer
+          .append("path")
+          .datum(freePathData)
+          .attr("class", "user-line-outline")
+          .attr("fill", "none")
+          .attr("stroke", "#000") // Black outline
+          .attr("stroke-width", 6) // Thicker than main line
+          .attr("stroke-opacity", 0.5)
+          .attr("stroke-linecap", "round")
+          .attr("stroke-linejoin", "round")
+          .attr("d", pathLineGenerator);
+      }
+
+      // Function to update drawing as the user moves the mouse
+      function updateDrawing(event) {
+        if (!isDrawing || !drawingEnabled) return;
+
+        const [x, y] = d3.pointer(event);
+
+        // Add new point to the path
+        freePathData.push([x, y]);
+
+        // Update the path's "d" attribute
+        userOutlinePath.attr("d", d3.line().curve(d3.curveBasis)(freePathData));
+      }
+
+      // Function to finish drawing
+      function endDrawing() {
+        if (!isDrawing || !drawingEnabled) return;
+
+        isDrawing = false;
+
+        // Convert drawing points to data coordinates and calculate RER
+        const dataPoints = freePathData.map((point) => {
+          const time = xScale.invert(point[0]);
+          const speed = yScale.invert(point[1]);
+          const calculatedRER = calculateRER(model.weights, time, speed);
+          return {
+            x: point[0],
+            y: point[1],
+            time: time,
+            speed: speed,
+            rer: calculatedRER,
+          };
+        });
+
+        // Create a unique gradient ID for this path
+        const userPathGradientId = "user-path-gradient-" + Date.now();
+
+        // Create a linear gradient for the path
+        const userPathGradient = defs
+          .append("linearGradient")
+          .attr("id", userPathGradientId)
+          .attr("gradientUnits", "userSpaceOnUse")
+          .attr("x1", dataPoints[0].x)
+          .attr("y1", dataPoints[0].y)
+          .attr("x2", dataPoints[dataPoints.length - 1].x)
+          .attr("y2", dataPoints[dataPoints.length - 1].y);
+
+        // Add color stops based on calculated RER values
+        dataPoints.forEach((point, i) => {
+          userPathGradient
+            .append("stop")
+            .attr("offset", `${(i / (dataPoints.length - 1)) * 100}%`)
+            .attr("stop-color", reversedColorScale(point.rer));
+        });
+
+        // Create the final path with gradient color
+        const userPath = drawLayer
+          .append("path")
+          .datum(freePathData)
+          .attr("class", "user-line-outline")
+          .attr("fill", "none")
+          .attr("stroke", `url(#${userPathGradientId})`) // Use gradient color
+          .attr("stroke-width", 4)
+          .attr("stroke-opacity", 0.8)
+          .attr("stroke-linecap", "round")
+          .attr("stroke-linejoin", "round")
+          .attr("d", pathLineGenerator)
+          .on("mouseover", function (event) {
+            // Get mouse position
+            const [mouseX, mouseY] = d3.pointer(event);
+
+            // Find closest point in the path
+            let minDist = Infinity;
+            let closestPoint = null;
+
+            dataPoints.forEach((point) => {
+              const dist = Math.sqrt(
+                Math.pow(mouseX - point.x, 2) + Math.pow(mouseY - point.y, 2)
+              );
+
+              if (dist < minDist) {
+                minDist = dist;
+                closestPoint = point;
+              }
+            });
+
+            // Only show tooltip if we're close enough to the line
+            if (minDist < 10 && closestPoint) {
+              tooltip
+                .style("visibility", "visible")
+                .style("left", `${event.pageX + 10}px`)
+                .style("top", `${event.pageY - 10}px`).html(`
+                  <b>Your Drawn Line</b><br>
+                  <strong>Time:</strong> ${closestPoint.time.toFixed(
+                    0
+                  )} seconds (${(closestPoint.time / 60).toFixed(1)} min)<br>
+                  <strong>Speed:</strong> ${closestPoint.speed.toFixed(
+                    1
+                  )} km/h<br>
+                  <strong>Predicted RER:</strong> ${closestPoint.rer.toFixed(3)}
+                `);
+            }
+          })
+          .on("mousemove", function (event) {
+            // Update tooltip position with the same logic as mouseover
+            const [mouseX, mouseY] = d3.pointer(event);
+
+            let minDist = Infinity;
+            let closestPoint = null;
+
+            dataPoints.forEach((point) => {
+              const dist = Math.sqrt(
+                Math.pow(mouseX - point.x, 2) + Math.pow(mouseY - point.y, 2)
+              );
+
+              if (dist < minDist) {
+                minDist = dist;
+                closestPoint = point;
+              }
+            });
+
+            if (minDist < 10 && closestPoint) {
+              tooltip
+                .style("visibility", "visible")
+                .style("left", `${event.pageX + 10}px`)
+                .style("top", `${event.pageY - 10}px`).html(`
+                  <b>Your Drawn Line</b><br>
+                  <strong>Time:</strong> ${closestPoint.time.toFixed(
+                    0
+                  )} seconds (${(closestPoint.time / 60).toFixed(1)} min)<br>
+                  <strong>Speed:</strong> ${closestPoint.speed.toFixed(
+                    1
+                  )} km/h<br>
+                  <strong>Predicted RER:</strong> ${closestPoint.rer.toFixed(3)}
+                `);
+            }
+          })
+          .on("mouseout", function () {
+            tooltip.style("visibility", "hidden");
+          });
+
+        document.body.style.pointerEvents = "auto";
+      }
+
+      // Attach mouse events to the SVG
+      svg
+        .on("mousedown", startDrawing)
+        .on("mousemove", updateDrawing)
+        .on("mouseup", endDrawing);
     })
     .catch((error) => {
       console.error("Error loading or processing data:", error);

@@ -3,29 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Treadmill data</title>
-    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <title>Treadmill Exercise Data Visualization</title>
+    <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://unicons.iconscout.com/release/v4.0.8/css/line.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1 class="page-title">Treadmill Maximal Exercise Tests</h1>
-  <div class="link">
-    <a href="https://github.com/ChanyoungPark07/treadmill_interactive_viz/blob/main/README.md" target="_blank" rel="noopener noreferrer">WRITE UP</a>
-  </div>
-  <div class="content-container">
-    <div id="filters-container">
-      <h3 class="filters-title">Filters</h3>
+  <header>
+    <h1 class="page-title">Treadmill Maximal Exercise Tests</h1>
+    <div class="link">
+      <a href="https://github.com/ChanyoungPark07/treadmill_interactive_viz/blob/main/README.md" target="_blank" rel="noopener noreferrer">
+        <i class="bx bx-file"></i> View Research Paper
+      </a>
+    </div>
+  </header>
+
+  <main class="content-container">
+    <!-- Population filters -->
+    <section id="filters-container" class="card">
+      <h3 class="filters-title">Population Filters</h3>
       <div id="selections">
         <div class="selection-item">
-          <label for="age-filter">Age:</label>
+          <label for="age-filter">Age Range:</label>
           <select id="age-filter">
-            <option value="all">All</option>
-            <option value="10s">10s</option>
-            <option value="20s">20s</option>
-            <option value="30s">30s</option>
-            <option value="40s">40s</option>
-            <option value="50s">50+</option>
+            <option value="all">All Ages</option>
+            <option value="10s">10-19 years</option>
+            <option value="20s">20-29 years</option>
+            <option value="30s">30-39 years</option>
+            <option value="40s">40-49 years</option>
+            <option value="50s">50+ years</option>
           </select>
         </div>
       
@@ -41,83 +47,86 @@
         <div class="selection-item">
           <label for="weight-filter">Weight (kg):</label>
           <select id="weight-filter">
-            <option value="all">All</option>
-            <option value="Under 60">Under 60</option>
-            <option value="60-70">60-70</option>
-            <option value="70-80">70-80</option>
-            <option value="80-90">80-90</option>
-            <option value="90+">90+</option>
+            <option value="all">All Weights</option>
+            <option value="Under 60">Under 60 kg</option>
+            <option value="60-70">60-70 kg</option>
+            <option value="70-80">70-80 kg</option>
+            <option value="80-90">80-90 kg</option>
+            <option value="90+">90+ kg</option>
           </select>
         </div>
       
         <div class="selection-item">
           <label for="height-filter">Height (cm):</label>
           <select id="height-filter">
-            <option value="all">All</option>
-            <option value="Under 165">Under 165</option>
-            <option value="165-175">165-175</option>
-            <option value="175-185">175-185</option>
-            <option value="185+">Over 185</option>
+            <option value="all">All Heights</option>
+            <option value="Under 165">Under 165 cm</option>
+            <option value="165-175">165-175 cm</option>
+            <option value="175-185">175-185 cm</option>
+            <option value="185+">Over 185 cm</option>
           </select>
         </div>
       </div>
-    </div>
-    <div class="chart-container">
-      <svg id="hist1_chart"></svg>
-    </div>
-
-    <div class="custom_person">
-      <h3>Enter Your Information to Predict Your RER</h3>
-
-      <div class="form-group">
-        <label for="gender">Gender:</label>
-        <select id="gender" name="gender">
-          <option value="male">Male</option>
-          <option value="female">Female</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="age">Age:</label>
-        <input type="number" id="age" name="age" min="0" placeholder="Enter your age">
-      </div>
-      
-      <div class="form-group">
-        <label for="weight">Weight (kg):</label>
-        <input type="number" id="weight" name="weight" min="0" step="0.1" placeholder="Enter your weight">
-      </div>
-      
-      <div class="form-group">
-        <label for="height">Height (cm):</label>
-        <input type="number" id="height" name="height" min="0" step="0.1" placeholder="Enter your height">
-      </div>
-      
-      
-      
-      <div class="button-group">
-        <button class="predict-btn">Calculate</button>
-        <button class="reset-btn">Reset</button>
-      </div>
+    </section>
     
+    <!-- First chart container -->
+    <section class="chart-container card">
+      <svg id="hist1_chart"></svg>
+    </section>
 
-      <div class="chart-container">
-        <svg id="scatter_chart"></svg>
-      </div>
-      <div class="button-group">
-        <button class="erase-draw">Erase</button>
-      </div>
-    </div>
-<!-- 
-    <div class="chart-container">
-      <svg id="violin_plot"></svg>
-    </div> -->
+    <!-- Personal RER calculator -->
+    <section id="custom-person-container" class="card">
+      <h3 class="filters-title">Calculate Your Personal RER</h3>
+      
+      <form id="custom-form">
+        <div class="form-group selection-item">
+          <label for="gender">Gender:</label>
+          <select id="gender" name="gender">
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+          </select>
+        </div>
 
-  </div>
+        <div class="form-group selection-item">
+          <label for="age">Age (years):</label>
+          <input type="number" id="age" name="age" min="0" placeholder="Enter your age">
+        </div>
+        
+        <div class="form-group selection-item">
+          <label for="weight">Weight (kg):</label>
+          <input type="number" id="weight" name="weight" min="0" step="0.1" placeholder="Enter your weight">
+        </div>
+        
+        <div class="form-group selection-item">
+          <label for="height">Height (cm):</label>
+          <input type="number" id="height" name="height" min="0" step="0.1" placeholder="Enter your height">
+        </div>
+        
+        <div class="button-group">
+          <button type="button" class="predict-btn btn-primary">
+            <i class="bx bx-calculator"></i> Calculate RER
+          </button>
+          <button type="button" class="reset-btn btn-secondary">
+            <i class="bx bx-reset"></i> Reset
+          </button>
+          <button type="button" class="erase-draw btn-secondary">
+            <i class="bx bx-eraser"></i> Erase Plot
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Second chart container -->
+    <section class="chart-container card">
+      <svg id="scatter_chart"></svg>
+    </section>
+  </main>
 
   <!-- Footer -->
   <footer class="footer">
-    <div class="footer__container container">
-        <h4 class="footer__title">Bulgogi Burners: Brandon Ng, Chanyoung Park, and Chanyoung Park</h4>
+    <div class="container">
+      <h4 class="footer__title">Made with ❤️ by Brandon Ng, Chanyoung Park, and Chanyoung Park</h4>
+      <p class="footer__copyright">© 2025 - Bulgogi Burners</p>
     </div>
   </footer>
 
