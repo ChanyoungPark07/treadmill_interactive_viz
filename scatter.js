@@ -322,8 +322,14 @@ function createScatterPlot(gender, age, weight, height) {
   const drawLayer = svg.append("g").attr("class", "draw-layer");
   // Variables to track drawing state
   let isDrawing = false;
-  let currentPath = null;
+  let userOutlinePath  = null;
   let pathData = [];
+  let userPath = null;
+
+  const lineGenerator = d3.line()
+  .x(d => d[0]) // X-coordinate
+  .y(d => d[1]) // Y-coordinate
+
 
   document.querySelector(".erase-draw").addEventListener("click", function() {
     drawLayer.selectAll("path").remove(); // Remove all drawn paths
@@ -578,17 +584,34 @@ function createScatterPlot(gender, age, weight, height) {
       
         const [x, y] = d3.pointer(event);
       
+
+
+         const lineGradientId = "line-gradient-" + Date.now();
+         // Store initial point
+         pathData = [[x, y]];
         // Create a new path element
-        currentPath = drawLayer.append("path")
+        // Create an outline path (black stroke, just like the regression line)
+        userOutlinePath = drawLayer.append("path")
+          .datum(pathData)
+          .attr("class", "user-line-outline")
           .attr("fill", "none")
-          .attr("stroke", "black") // Line color
-          .attr("stroke-width", 6) // Line thickness
+          .attr("stroke", "#000") // Black outline
+          .attr("stroke-width", 6) // Thicker than main line
+          .attr("stroke-opacity", 0.5)
           .attr("stroke-linecap", "round")
           .attr("stroke-linejoin", "round")
-          .attr("d", `M ${x},${y}`); // Move to the starting point
-      
-        // Store initial point
-        pathData = [[x, y]];
+          .attr("d", lineGenerator);
+
+        // Create the main user-drawn path (with gradient)
+        userPath = drawLayer.append("path")
+          .datum(pathData)
+          .attr("class", "user-drawn-line")
+          .attr("fill", "none")
+          .attr("stroke", `url(#${lineGradientId})`) // Same gradient as regression
+          .attr("stroke-width", 4) // Same width as regression line
+          .attr("stroke-linecap", "round")
+          .attr("stroke-linejoin", "round")
+          .attr("d", lineGenerator);
       }
       
       // Function to update drawing as the user moves the mouse
@@ -600,22 +623,12 @@ function createScatterPlot(gender, age, weight, height) {
         pathData.push([x, y]);
       
         // Update the path's "d" attribute
-        currentPath.attr("d", d3.line().curve(d3.curveBasis)(pathData));
+        userOutlinePath.attr("d", d3.line().curve(d3.curveBasis)(pathData));
+        userPath.datum(pathData).attr("d", lineGenerator);
       }
       
       // Function to finish drawing
       function endDrawing() {
-        drawLayer.append("path")
-        .attr("fill", "none")
-        .attr("stroke", "red") // New line color (change as needed)
-        .attr("stroke-width", 2) // Thickness can be adjusted
-        .attr("stroke-linecap", "round")
-        .attr("stroke-linejoin", "round")
-        .attr("d", d3.line().curve(d3.curveBasis)(pathData))
-        .attr("opacity", 0.7); // Slight transparency to distinguish
-    
-    
-
         if (!isDrawing) return;
         isDrawing = false;
 
