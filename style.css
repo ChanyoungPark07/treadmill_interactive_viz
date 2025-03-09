@@ -56,7 +56,8 @@ header {
 }
 
 .text-container {
-  max-width: 100%;
+  max-width: 90%;
+  margin: 0 auto;
   line-height: 1.6;
 }
 
