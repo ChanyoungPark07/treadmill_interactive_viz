@@ -107,6 +107,9 @@ const tooltip = d3
   .style("pointer-events", "none")
   .style("z-index", "1000");
 
+// Variable to store global RER extent
+let globalRERExtent;
+
 // Load data
 d3.csv("merged.csv").then((data) => {
   data.forEach((d) => {
@@ -116,6 +119,9 @@ d3.csv("merged.csv").then((data) => {
     d.Weight = +d.Weight;
     d.Height = +d.Height;
   });
+
+  // Calculate and store the global RER extent from the entire dataset
+  globalRERExtent = d3.extent(data, (d) => d.RER);
 
   drawHistogram(data, data.length);
   setupFilters(data);
@@ -379,13 +385,15 @@ function drawHistogram(data, dlength) {
     .style("opacity", 0)
     .remove();
 
-  // Define x scale with improved domain range based on data
-  const xExtent = d3.extent(data, (d) => d.RER);
-  const padding = (xExtent[1] - xExtent[0]) * 0.05; // 5% padding
+  // Use the global RER extent for consistent x-axis scale
+  const padding = (globalRERExtent[1] - globalRERExtent[0]) * 0.05; // 5% padding
 
   const x = d3
     .scaleLinear()
-    .domain([Math.max(0.55, xExtent[0] - padding), xExtent[1] + padding])
+    .domain([
+      Math.max(0.55, globalRERExtent[0] - padding),
+      globalRERExtent[1] + padding,
+    ])
     .range([0, width]);
 
   // Exactly 30 bins for the histogram
@@ -617,7 +625,7 @@ function drawHistogram(data, dlength) {
     referenceGroup
       .append("text")
       .attr("class", "reference-annotation")
-      .attr("x", x(1) + 10)
+      .attr("x", x(1) + 13)
       .attr("y", 20)
       .attr("text-anchor", "start")
       .attr("font-size", "12px")
@@ -633,7 +641,7 @@ function drawHistogram(data, dlength) {
     referenceGroup
       .append("text")
       .attr("class", "reference-annotation")
-      .attr("x", x(1) + 10)
+      .attr("x", x(1) + 13)
       .attr("y", 35)
       .attr("text-anchor", "start")
       .attr("font-size", "10px")
@@ -647,7 +655,7 @@ function drawHistogram(data, dlength) {
     referenceGroup
       .append("text")
       .attr("class", "reference-annotation")
-      .attr("x", x(1) + 10)
+      .attr("x", x(1) + 13)
       .attr("y", 45)
       .attr("text-anchor", "start")
       .attr("font-size", "10px")

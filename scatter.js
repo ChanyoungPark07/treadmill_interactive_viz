@@ -1059,7 +1059,7 @@ function createScatterPlot(gender, age, weight, height) {
           .attr("fill", "none")
           .attr("stroke", `url(#${userPathGradientId})`) // Use gradient color
           .attr("stroke-width", 4)
-          .attr("stroke-opacity", 0.8)
+          .attr("stroke-opacity", 1.0)
           .attr("stroke-linecap", "round")
           .attr("stroke-linejoin", "round")
           .attr("d", pathLineGenerator)
