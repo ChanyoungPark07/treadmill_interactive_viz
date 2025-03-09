@@ -373,12 +373,15 @@ function createScatterPlot(gender, age, weight, height) {
   let isDrawing = false;
   let userOutlinePath = null;
   let freePathData = [];
+  let lastPoint = null;
+  let lastTimestamp = 0;
 
+  // Create a smooth curve interpolator with higher alpha value for more smoothness
   const pathLineGenerator = d3
     .line()
-    .x((d) => d[0]) // X-coordinate
-    .y((d) => d[1]) // Y-coordinate
-    .curve(d3.curveCatmullRom.alpha(0.5)); // Smoother curve
+    .x((d) => d[0])
+    .y((d) => d[1])
+    .curve(d3.curveCatmullRom.alpha(0.75)); // Increased smoothing with higher alpha
 
   // Load and process the data
   Promise.all([d3.json("model_weights.json"), d3.csv("merged.csv")])
@@ -956,6 +959,40 @@ function createScatterPlot(gender, age, weight, height) {
         });
 
       /**
+       * Helper function to calculate distance between two points
+       */
+      function distance(p1, p2) {
+        return Math.sqrt(
+          Math.pow(p2[0] - p1[0], 2) + Math.pow(p2[1] - p1[1], 2)
+        );
+      }
+
+      /**
+       * Helper function to interpolate points for smoother drawing
+       * Creates additional points between p1 and p2 when the distance is large
+       */
+      function interpolatePoints(p1, p2, minDistance = 5) {
+        const dist = distance(p1, p2);
+        const result = [p1];
+
+        if (dist > minDistance) {
+          // Calculate number of points to insert (more points = smoother curve)
+          const numPoints = Math.ceil(dist / minDistance);
+
+          for (let i = 1; i < numPoints; i++) {
+            const t = i / numPoints;
+            result.push([
+              p1[0] + (p2[0] - p1[0]) * t,
+              p1[1] + (p2[1] - p1[1]) * t,
+            ]);
+          }
+        }
+
+        result.push(p2);
+        return result;
+      }
+
+      /**
        * Starts user drawing on mouse down
        * @param {Event} event - Mouse event
        */
@@ -971,6 +1008,8 @@ function createScatterPlot(gender, age, weight, height) {
         svg.style("pointer-events", "all"); // Allow SVG interactions
 
         const [x, y] = d3.pointer(event);
+        lastPoint = [x, y];
+        lastTimestamp = Date.now();
 
         // Store initial point
         freePathData = [[x, y]];
@@ -997,12 +1036,27 @@ function createScatterPlot(gender, age, weight, height) {
         if (!isDrawing || !drawingEnabled) return;
 
         const [x, y] = d3.pointer(event);
+        const currentPoint = [x, y];
+        const now = Date.now();
 
-        // Add new point to the path
-        freePathData.push([x, y]);
+        // Only add points if we've moved a minimum distance or after a time threshold
+        // This prevents too many points when moving slowly
+        if (distance(lastPoint, currentPoint) > 3 || now - lastTimestamp > 50) {
+          // Add interpolated points between last point and current point for smoother curves
+          const newPoints = interpolatePoints(lastPoint, currentPoint);
 
-        // Update the path's "d" attribute
-        userOutlinePath.attr("d", d3.line().curve(d3.curveBasis)(freePathData));
+          // Add all new points except the first one (which is the same as lastPoint)
+          for (let i = 1; i < newPoints.length; i++) {
+            freePathData.push(newPoints[i]);
+          }
+
+          // Update the path with the more detailed point set using our smooth curve generator
+          userOutlinePath.datum(freePathData).attr("d", pathLineGenerator);
+
+          // Update tracking variables
+          lastPoint = currentPoint;
+          lastTimestamp = now;
+        }
 
         // Ensure regression group stays on top
         regressionGroup.raise();
