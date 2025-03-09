@@ -2,12 +2,28 @@
 @import url('global.css');
 
 /* =============== LAYOUT =============== */
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  color: var(--text-color);
+}
+
+header {
+  padding: 1.5rem 1rem 0.5rem;
+  background-color: var(--container-color);
+  border-bottom: 0.0625rem solid var(--border-color);
+}
+
 .page-title {
   text-align: center;
   margin-bottom: 0.5rem;
   position: relative;
   padding-bottom: 1rem;
   font-size: 1.75rem;
+  color: var(--title-color);
 }
 
 .page-title::after {
@@ -22,47 +38,33 @@
   border-radius: 0.1875rem;
 }
 
-.link {
-  text-align: center;
-  margin-bottom: 1.5rem;
-}
-
-.link a {
-  display: inline-block;
-  text-decoration: none;
-  color: var(--color-accent);
-  font-weight: var(--font-medium);
-  font-size: var(--small-font-size);
-  padding: 0.5rem 1rem;
-  border: 0.0625rem solid var(--color-accent);
-  border-radius: 0.25rem;
-  transition: all 0.3s;
-}
-
-.link a:hover {
-  background-color: var(--color-accent);
-  color: white;
-}
-
-body {
+.content-wrapper {
+  max-width: 100rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  margin: 0;
-  padding: 0;
-}
-
-main {
+  gap: 1.5rem;
   flex: 1;
 }
 
 .content-container {
   display: grid;
   grid-template-columns: 1fr 2fr;
-  max-width: 100rem;
-  margin: 0 auto;
   gap: 1.5rem;
-  padding: 0 1rem;
+  margin-bottom: 1rem;
+}
+
+.text-container {
+  max-width: 100%;
+  line-height: 1.6;
+}
+
+.explanation-text {
+  margin: 0;
+  padding: 0;
+  font-size: 1rem;
+  line-height: 1.6;
 }
 
 /* =============== CARD CONTAINERS =============== */
@@ -70,7 +72,7 @@ main {
   background-color: var(--container-color);
   border-radius: 0.625rem;
   box-shadow: var(--shadow-md);
-  padding: 1.25rem;
+  padding: 1.5rem;
   border: 0.0625rem solid var(--border-color);
   height: fit-content;
 }
@@ -101,14 +103,49 @@ main {
 #selections {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
   width: 100%;
 }
 
 .selection-item {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.5rem;
+}
+
+.selection-item label {
+  font-weight: var(--font-medium);
+  color: var(--title-color);
+  font-size: 0.9rem;
+}
+
+.selection-item select, 
+.selection-item input {
+  padding: 0.625rem;
+  border-radius: 0.375rem;
+  border: 0.0625rem solid var(--border-color);
+  background-color: white;
+  font-family: var(--body-font);
+  font-size: 0.875rem;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.selection-item select:focus,
+.selection-item input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 0.125rem rgba(70, 130, 180, 0.2);
+}
+
+.centered-equation {
+  text-align: center;
+  display: block;
+  margin: 1rem auto;
+  padding: 0.5rem;
+  font-family: "Times New Roman", Times, serif;
+  font-size: 1.2rem;
+  font-style: italic;
+  font-weight: var(--font-medium);
 }
 
 /* =============== CHART CONTAINER =============== */
@@ -116,13 +153,17 @@ main {
   width: 100%;
   background-color: var(--container-color);
   border-radius: 0.625rem;
-  padding: 1.25rem;
+  padding: 1.5rem;
   box-shadow: var(--shadow-md);
   border: 0.0625rem solid var(--border-color);
   overflow: visible;
   min-height: 25rem;
   position: relative;
-  margin-bottom: 1.5rem;
+}
+
+svg {
+  width: 100%;
+  height: 100%;
 }
 
 /* =============== TOOLTIP =============== */
@@ -258,87 +299,106 @@ svg text {
 form {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  gap: 0.75rem;
+  width: 100%;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  margin-bottom: 0.75rem;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
 }
 
 .button-group {
   display: flex;
   justify-content: space-between;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+  gap: 0.75rem;
+  margin-top: 1rem;
 }
 
 /* Button styling */
+button {
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-family: var(--body-font);
+  font-weight: var(--font-medium);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .btn-primary {
   background-color: var(--color-accent);
   color: white;
-  padding: 0.5rem 1rem;
-  font-size: 0.8rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
 }
 
 .btn-primary:hover {
   background-color: var(--color-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+  box-shadow: none;
 }
 
 .btn-secondary {
   background-color: #f8f9fa;
   border: 0.0625rem solid var(--border-color);
   color: var(--text-color);
-  padding: 0.5rem 0.75rem;
-  font-size: 0.8rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
 }
 
 .btn-secondary:hover {
   background-color: #e9ecef;
+  transform: translateY(-2px);
+  box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.05);
+}
+
+.btn-secondary:active {
+  transform: translateY(0);
+  box-shadow: none;
 }
 
 /* Button icons */
 .button-group i {
-  margin-right: 0.25rem;
-  font-size: 0.85rem;
+  margin-right: 0.375rem;
+  font-size: 0.9375rem;
 }
 
 /* =============== FOOTER =============== */
 .footer {
   background-color: var(--container-color);
   border-top: 0.0625rem solid var(--border-color);
-  padding: 1rem 0;
-  margin-top: 0;
+  padding: 1.5rem 0;
+  margin-top: auto;
   width: 100%;
-  margin-left: 0;
-  margin-right: 0;
-  margin-bottom: 0;
 }
 
 .footer .container {
   max-width: 100rem;
   margin: 0 auto;
-  padding: 0.5rem;
+  padding: 0 1rem;
   text-align: center;
 }
 
 .footer__title {
-  font-size: var(--small-font-size);
+  font-size: 0.9375rem;
   color: var(--text-color);
   font-weight: var(--font-medium);
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.375rem;
 }
 
 .footer__copyright {
-  font-size: var(--tiny-font-size);
+  font-size: 0.8125rem;
   color: #777;
-}
-
-header {
-  padding: 1rem 1rem 0 1rem;
 }
 
 /* =============== RESPONSIVE =============== */
@@ -359,16 +419,12 @@ header {
 }
 
 @media screen and (max-width: 48rem) { /* 768px */
-  header {
-    padding: 1rem 0.75rem 0 0.75rem;
-  }
-  
-  .content-container {
-    padding: 0 0.75rem;
+  .content-wrapper {
+    padding: 1rem 0.75rem;
   }
   
   .card, .chart-container {
-    padding: 1rem;
+    padding: 1.25rem;
   }
   
   .button-group {
@@ -382,25 +438,29 @@ header {
 }
 
 @media screen and (max-width: 36rem) { /* 576px */
-  header {
-    padding: 1rem 0.5rem 0 0.5rem;
+  .content-wrapper {
+    padding: 0.75rem 0.5rem;
   }
   
-  .content-container {
-    padding: 0 0.5rem;
+  .card {
+    padding: 1rem;
   }
   
   .button-group {
     flex-direction: column;
+    gap: 0.625rem;
   }
   
   .button-group button {
     width: 100%;
-    margin-bottom: 0.5rem;
   }
   
   .chart-container {
     min-height: 18.75rem;
-    padding: 0.75rem;
+    padding: 1rem;
+  }
+
+  .text-container {
+    font-size: 0.9375rem;
   }
 }
