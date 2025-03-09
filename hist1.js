@@ -85,6 +85,8 @@ const barsGroup = svg.append("g").attr("class", "bars-layer");
 // Top layer for axes and density line
 const axesGroup = svg.append("g").attr("class", "axes-layer");
 const lineGroup = svg.append("g").attr("class", "line-layer");
+// Create a new layer for the reference line and annotation
+const referenceGroup = svg.append("g").attr("class", "reference-layer");
 
 // Calculate dimensions based on viewBox
 const width = 800 - margin.left - margin.right;
@@ -233,7 +235,7 @@ function drawHistogram(data, dlength) {
   // Update title and labels with transitions
   const labels = {
     "chart-title": {
-      text: "Density Distribution of Respiratory Exchange Rate (RER)",
+      text: "Density Distribution of Respiratory Exchange Ratio (RER)",
       x: width / 2,
       y: -20,
       size: "18px",
@@ -315,6 +317,9 @@ function drawHistogram(data, dlength) {
 
     // Remove grid lines
     gridGroup.selectAll(".y-grid-line").remove();
+
+    // Remove reference line and annotation
+    referenceGroup.selectAll(".reference-line, .reference-annotation").remove();
 
     // Update or add message
     const noDataMessage = svg.selectAll(".no-data-message").data([1]);
@@ -583,6 +588,76 @@ function drawHistogram(data, dlength) {
 
   // Store current bins for next comparison
   window.previousBins = bins;
+
+  // Add vertical reference line at RER = 1
+  // First, clear any existing reference line and annotation
+  referenceGroup
+    .selectAll(".reference-line, .reference-annotation, .reference-box")
+    .remove();
+
+  // Only add the reference line if it falls within our x-domain
+  if (x.domain()[0] <= 1 && x.domain()[1] >= 1) {
+    // Add the vertical reference line at RER = 1
+    referenceGroup
+      .append("line")
+      .attr("class", "reference-line")
+      .attr("x1", x(1))
+      .attr("y1", 0)
+      .attr("x2", x(1))
+      .attr("y2", height)
+      .attr("stroke", "red")
+      .attr("stroke-width", 1.5)
+      .attr("stroke-dasharray", "5,5") // Creates a dotted line
+      .style("opacity", 0)
+      .transition()
+      .duration(750)
+      .style("opacity", 0.8);
+
+    // Add an annotation for the reference line
+    referenceGroup
+      .append("text")
+      .attr("class", "reference-annotation")
+      .attr("x", x(1) + 10)
+      .attr("y", 20)
+      .attr("text-anchor", "start")
+      .attr("font-size", "12px")
+      .attr("font-weight", "bold")
+      .attr("fill", "red")
+      .style("opacity", 0)
+      .text("RER = 1.0")
+      .transition()
+      .duration(750)
+      .style("opacity", 1);
+
+    // Add explanation text
+    referenceGroup
+      .append("text")
+      .attr("class", "reference-annotation")
+      .attr("x", x(1) + 10)
+      .attr("y", 35)
+      .attr("text-anchor", "start")
+      .attr("font-size", "10px")
+      .attr("fill", "#333")
+      .style("opacity", 0)
+      .text("Metabolic transition from")
+      .transition()
+      .duration(750)
+      .style("opacity", 1);
+
+    referenceGroup
+      .append("text")
+      .attr("class", "reference-annotation")
+      .attr("x", x(1) + 10)
+      .attr("y", 45)
+      .attr("text-anchor", "start")
+      .attr("font-size", "10px")
+      .attr("fill", "#333")
+      .style("opacity", 0)
+      .text("fats to carbohydrates")
+      .transition()
+      .duration(750)
+      .style("opacity", 1);
+  }
 }
 
 // Generate KDE (Kernel Density Estimation) points

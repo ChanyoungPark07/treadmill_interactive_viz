@@ -1,5 +1,14 @@
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm";
 
+/**
+ * Respiratory Exchange Ratio Visualization Tool
+ *
+ * This visualization displays the relationship between time, speed, and RER values
+ * for different demographic groups. It allows users to see predicted RER values
+ * based on a linear regression model and interact with the visualization by drawing
+ * custom paths to explore different speed profiles.
+ */
+
 // Define dimensions and margins for the chart
 const width = 900,
   height = 600,
@@ -8,13 +17,13 @@ const width = 900,
 // Variable to track if drawing is enabled
 let drawingEnabled = false;
 
-// Add event listener to the Calculate button
+// Add event listeners when the DOM is fully loaded
 document.addEventListener("DOMContentLoaded", function () {
   const calculateBtn = document.querySelector(".predict-btn");
   const resetBtn = document.querySelector(".reset-btn");
   const eraseBtn = document.querySelector(".erase-draw");
 
-  // Set up the calculate button
+  // Set up the calculate button - initiates visualization based on demographic inputs
   calculateBtn.addEventListener("click", function () {
     // For gender, convert dropdown value to numeric format where 1=female, 0=male
     const genderElem = document.getElementById("gender");
@@ -30,21 +39,14 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
-    console.log(
-      `Processing: Gender=${gender} (${
-        gender === 1 ? "Female" : "Male"
-      }), Age=${age}, Weight=${weight}, Height=${height}`
-    );
-
     // Create the scatter plot with the provided inputs
     createScatterPlot(gender, age, weight, height);
 
     // Enable drawing after calculation
     drawingEnabled = true;
-    console.log("Drawing enabled");
   });
 
-  // Set up the reset button
+  // Set up the reset button - clears visualization and input fields
   resetBtn.addEventListener("click", function () {
     // Clear input fields
     document.getElementById("age").value = "";
@@ -68,7 +70,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Disable drawing
     drawingEnabled = false;
-    console.log("Drawing disabled");
 
     // Add placeholder text again
     svg.selectAll(".placeholder-text").remove();
@@ -82,10 +83,9 @@ document.addEventListener("DOMContentLoaded", function () {
       .text("Enter your information and click 'Calculate' to view data");
   });
 
-  // Set up the erase button
+  // Set up the erase button - removes any user-drawn paths
   eraseBtn.addEventListener("click", function () {
     svg.selectAll(".draw-layer path").remove();
-    console.log("Erased user drawings");
   });
 });
 
@@ -101,7 +101,7 @@ const svg = d3
   .append("g")
   .attr("transform", `translate(${margin.left},${margin.top})`);
 
-// Create tooltip
+// Create tooltip for interactive data exploration
 const tooltip = d3
   .select("body")
   .append("div")
@@ -114,7 +114,10 @@ const tooltip = d3
   .style("position", "absolute")
   .style("z-index", "1000");
 
-// Define demographic bins
+/**
+ * Define demographic bins for categorizing users
+ * Bins are organized by gender, age, weight, and height
+ */
 const male_age_bins = [
   [10, 19],
   [20, 29],
@@ -149,7 +152,7 @@ const female_height_bins = [
   [170, 205],
 ];
 
-// Add chart title
+// Set up initial chart title and labels
 svg
   .append("text")
   .attr("class", "chart-title")
@@ -160,7 +163,6 @@ svg
   .attr("font-weight", "bold")
   .text("Average Respiratory Exchange Ratio Over Time and Speed");
 
-// Add axes labels
 svg
   .append("text")
   .attr("class", "x-label")
@@ -197,12 +199,22 @@ svg
   .attr("font-size", "16px")
   .text("Enter your information and click 'Calculate' to view data");
 
-// Helper function to determine if a value falls within any of the bin ranges
+/**
+ * Helper function to determine if a value falls within any of the bin ranges
+ * @param {number} value - The value to check
+ * @param {Array} bins - Array of bin ranges
+ * @returns {boolean} True if value falls in any bin, false otherwise
+ */
 function fallsInBin(value, bins) {
   return bins.some((bin) => value >= bin[0] && value <= bin[1]);
 }
 
-// Helper function to determine which bin a value falls into
+/**
+ * Helper function to determine which bin a value falls into
+ * @param {number} value - The value to check
+ * @param {Array} bins - Array of bin ranges
+ * @returns {number} Index of the bin or -1 if not found
+ */
 function getBinIndex(value, bins) {
   for (let i = 0; i < bins.length; i++) {
     if (value >= bins[i][0] && value <= bins[i][1]) {
@@ -212,7 +224,15 @@ function getBinIndex(value, bins) {
   return -1; // Not in any bin
 }
 
-// Helper function to filter data based on demographic inputs
+/**
+ * Filters data based on user demographic inputs
+ * @param {Array} data - The dataset to filter
+ * @param {number|string} gender - 0/1 or "male"/"female"
+ * @param {number} age - User's age
+ * @param {number} weight - User's weight in kg
+ * @param {number} height - User's height in cm
+ * @returns {Array} Filtered dataset matching demographic profile
+ */
 function filterDataByDemographics(data, gender, age, weight, height) {
   const isFemale = gender === 1 || gender === "1" || gender === "female";
 
@@ -228,9 +248,6 @@ function filterDataByDemographics(data, gender, age, weight, height) {
 
   // If any value doesn't fall within the defined bins, return empty dataset
   if (ageBinIndex === -1 || weightBinIndex === -1 || heightBinIndex === -1) {
-    console.log(
-      `Demographics out of range - Age: ${ageBinIndex}, Weight: ${weightBinIndex}, Height: ${heightBinIndex}`
-    );
     return [];
   }
 
@@ -238,12 +255,6 @@ function filterDataByDemographics(data, gender, age, weight, height) {
   const targetAgeBin = ageBins[ageBinIndex];
   const targetWeightBin = weightBins[weightBinIndex];
   const targetHeightBin = heightBins[heightBinIndex];
-
-  console.log(
-    `Selected bins for ${
-      isFemale ? "Female" : "Male"
-    } - Age: [${targetAgeBin}], Weight: [${targetWeightBin}], Height: [${targetHeightBin}]`
-  );
 
   // Filter data to match gender and the specific bins
   return data.filter((d) => {
@@ -260,7 +271,15 @@ function filterDataByDemographics(data, gender, age, weight, height) {
   });
 }
 
-// Function to find the appropriate model weights based on demographics
+/**
+ * Finds the appropriate model weights based on demographics
+ * @param {number} gender - 0 for male, 1 for female
+ * @param {number} age - User's age
+ * @param {number} weight - User's weight in kg
+ * @param {number} height - User's height in cm
+ * @param {Object} modelWeights - Object containing model weights for different demographic groups
+ * @returns {Object|null} Object with matching model weights or null if no match
+ */
 function findModelWeights(gender, age, weight, height, modelWeights) {
   // Parse key format: gender_age_weight_height
   function parseWeightKey(key) {
@@ -293,21 +312,23 @@ function findModelWeights(gender, age, weight, height, modelWeights) {
   }
 
   if (matchingKey) {
-    console.log(`Found matching model: ${matchingKey}`);
     return {
       key: matchingKey,
       weights: modelWeights.Weights[matchingKey],
       rmse: modelWeights.RMSE[matchingKey],
     };
   } else {
-    console.log(
-      `No matching model found for gender=${gender}, age=${age}, weight=${weight}, height=${height}`
-    );
     return null;
   }
 }
 
-// Calculate RER based on linear model: RER = intercept + time*coefficient + speed*coefficient
+/**
+ * Calculates RER based on linear model: RER = intercept + time*coefficient + speed*coefficient
+ * @param {Array|Object} weights - Model coefficients
+ * @param {number} time - Time in seconds
+ * @param {number} speed - Speed in km/h
+ * @returns {number} Calculated RER value
+ */
 function calculateRER(weights, time, speed) {
   // Check if weights is an array or an object with named fields
   if (Array.isArray(weights)) {
@@ -317,12 +338,14 @@ function calculateRER(weights, time, speed) {
   }
 }
 
-// Function to create/update the scatter plot
+/**
+ * Main function to create and update the scatter plot
+ * @param {number} gender - 0 for male, 1 for female
+ * @param {number} age - User's age
+ * @param {number} weight - User's weight in kg
+ * @param {number} height - User's height in cm
+ */
 function createScatterPlot(gender, age, weight, height) {
-  console.log(
-    `Creating scatter plot for: Gender=${gender}, Age=${age}, Weight=${weight}, Height=${height}`
-  );
-
   // Remove placeholder text
   svg.select(".placeholder-text").remove();
 
@@ -340,8 +363,11 @@ function createScatterPlot(gender, age, weight, height) {
   svg.selectAll("defs").remove();
   svg.selectAll(".draw-layer").remove();
 
-  // Create drawing layer
+  // Create drawing layer for user interactions
   const drawLayer = svg.append("g").attr("class", "draw-layer");
+
+  // Create a group to hold regression lines - will be moved to top later
+  const regressionGroup = svg.append("g").attr("class", "regression-group");
 
   // Variables to track drawing state
   let isDrawing = false;
@@ -351,14 +377,12 @@ function createScatterPlot(gender, age, weight, height) {
   const pathLineGenerator = d3
     .line()
     .x((d) => d[0]) // X-coordinate
-    .y((d) => d[1]); // Y-coordinate
+    .y((d) => d[1]) // Y-coordinate
+    .curve(d3.curveCatmullRom.alpha(0.5)); // Smoother curve
 
   // Load and process the data
   Promise.all([d3.json("model_weights.json"), d3.csv("merged.csv")])
     .then(([modelWeights, data]) => {
-      console.log("Raw data sample:", data.slice(0, 3));
-      console.log("Model weights loaded");
-
       // Find the appropriate model for this demographic
       const model = findModelWeights(gender, age, weight, height, modelWeights);
 
@@ -396,6 +420,10 @@ function createScatterPlot(gender, age, weight, height) {
         (d) => !isNaN(d.RER) && !isNaN(d.time) && !isNaN(d.Speed)
       );
 
+      // Calculate global RER extent from the entire dataset
+      // This ensures color scale is consistent across different demographic selections
+      const globalRerExtent = d3.extent(data, (d) => d.RER);
+
       // Filter data based on demographic inputs
       const filteredData = filterDataByDemographics(
         data,
@@ -404,8 +432,6 @@ function createScatterPlot(gender, age, weight, height) {
         weight,
         height
       );
-
-      console.log(`Filtered data by demographics: ${filteredData.length} rows`);
 
       if (filteredData.length === 0) {
         svg
@@ -421,10 +447,6 @@ function createScatterPlot(gender, age, weight, height) {
         drawingEnabled = false;
         return;
       }
-
-      console.log(
-        `Found ${filteredData.length} data points in matching demographic bin`
-      );
 
       // Create time bins (30 second intervals)
       const timeMax = d3.max(filteredData, (d) => d.time);
@@ -482,18 +504,17 @@ function createScatterPlot(gender, age, weight, height) {
         .domain([0, speedMax]) // Start at 0 as requested
         .range([innerHeight, 0]);
 
-      // Create color scale for RER values
-      const rerExtent = d3.extent(binnedData, (d) => d.RER);
-
+      // Create color scale for RER values using the global extent
+      // This ensures consistent coloring across different demographic selections
       const colorScale = d3
         .scaleSequential()
-        .domain([rerExtent[0], rerExtent[1]])
+        .domain([globalRerExtent[0], globalRerExtent[1]])
         .interpolator(d3.interpolateRdYlBu)
         .clamp(true);
 
       // Reverse the color scale to match RdYlBu_r in Python
       const reversedColorScale = (d) =>
-        colorScale(rerExtent[1] - (d - rerExtent[0]));
+        colorScale(globalRerExtent[1] - (d - globalRerExtent[0]));
 
       // Create defs for gradients
       const defs = svg.append("defs");
@@ -512,7 +533,7 @@ function createScatterPlot(gender, age, weight, height) {
       // Add Y axis
       svg.append("g").attr("class", "y-axis").call(yAxis);
 
-      // Add grid
+      // Add grid lines
       svg
         .append("g")
         .attr("class", "grid-lines")
@@ -561,39 +582,10 @@ function createScatterPlot(gender, age, weight, height) {
         .y((d) => yScale(d.avgSpeed))
         .curve(d3.curveCatmullRom.alpha(0.5)); // Smoother curve
 
-      // Create gradient for the line color with unique ID
-      const lineGradientId = "line-gradient-" + Date.now();
-      const lineGradient = defs
-        .append("linearGradient")
-        .attr("id", lineGradientId)
-        .attr("gradientUnits", "userSpaceOnUse")
-        .attr("x1", 0)
-        .attr("y1", 0)
-        .attr("x2", innerWidth)
-        .attr("y2", 0);
-
-      // Use the same color sequence as the legend for consistency
-      const gradientColors = [
-        "#3060cf",
-        "#5090df",
-        "#80b0ef",
-        "#ffee99",
-        "#ffc066",
-        "#ff8833",
-        "#cf3030",
-      ];
-
-      // Add evenly spaced color stops
-      gradientColors.forEach((color, i) => {
-        lineGradient
-          .append("stop")
-          .attr("offset", `${i * (100 / 6)}%`)
-          .attr("stop-color", color);
-      });
-
       // Add color stops to match the RdYlBu_r colormap for both legends
+      // Use global RER extent for consistent legend colors
       const colorStops = d3.range(0, 1.01, 0.1).map((t) => {
-        const rer = d3.quantile(rerExtent, t);
+        const rer = d3.quantile(globalRerExtent, t);
         return {
           offset: `${t * 100}%`,
           color: reversedColorScale(rer),
@@ -605,12 +597,31 @@ function createScatterPlot(gender, age, weight, height) {
       let animatedPoints = 0;
       let animationComplete = false;
 
-      // Function to create regression line - now separate
+      /**
+       * Creates the regression line with color gradient based on RER values
+       */
       function createRegressionLine() {
-        console.log("Creating regression line");
+        // Create gradient for the line color with unique ID
+        const lineGradientId = "line-gradient-" + Date.now();
+        const lineGradient = defs
+          .append("linearGradient")
+          .attr("id", lineGradientId)
+          .attr("gradientUnits", "userSpaceOnUse")
+          .attr("x1", 0)
+          .attr("y1", 0)
+          .attr("x2", innerWidth)
+          .attr("y2", 0);
 
-        // First add the outline stroke
-        const outlinePath = svg
+        // Use the same color scale as the data points for consistent coloring
+        regressionData.forEach((d, i) => {
+          lineGradient
+            .append("stop")
+            .attr("offset", `${(i / (regressionData.length - 1)) * 100}%`)
+            .attr("stop-color", reversedColorScale(d.predictedRER));
+        });
+
+        // First add the outline stroke to the regression group
+        const outlinePath = regressionGroup
           .append("path")
           .datum(regressionData)
           .attr("class", "regression-line-outline")
@@ -620,8 +631,8 @@ function createScatterPlot(gender, age, weight, height) {
           .attr("stroke-opacity", 0.5)
           .attr("d", lineGenerator);
 
-        // Then add the colored regression line on top
-        const path = svg
+        // Then add the colored regression line on top in the regression group
+        const path = regressionGroup
           .append("path")
           .datum(regressionData)
           .attr("class", "regression-line")
@@ -648,8 +659,8 @@ function createScatterPlot(gender, age, weight, height) {
           .duration(1500)
           .attr("stroke-dashoffset", 0)
           .on("end", function () {
-            // After line is drawn, add RER value labels
-            svg
+            // After line is drawn, add RER value labels to the regression group
+            regressionGroup
               .selectAll(".regression-point-label")
               .data(regressionData)
               .enter()
@@ -679,8 +690,8 @@ function createScatterPlot(gender, age, weight, height) {
               .y((d) => yScale(d.avgSpeed))
               .curve(d3.curveCatmullRom.alpha(0.5));
 
-            // Add invisible overlay path with wider stroke-width for easier hovering
-            const overlayPath = svg
+            // Add invisible overlay path with wider stroke-width for easier hovering to the regression group
+            const overlayPath = regressionGroup
               .append("path")
               .datum(regressionData)
               .attr("class", "regression-line-overlay")
@@ -730,7 +741,7 @@ function createScatterPlot(gender, age, weight, height) {
                 // Highlight the point on the regression line
                 svg.selectAll(".highlight-point").remove();
 
-                svg
+                regressionGroup
                   .append("circle")
                   .attr("class", "highlight-point")
                   .attr("cx", xScale(closest.time))
@@ -751,13 +762,19 @@ function createScatterPlot(gender, age, weight, height) {
 
             // After regression line is complete, add legends
             addLegends();
+
+            // Ensure proper z-index by raising elements in order
+            // First make sure drawing layer is above data points
+            drawLayer.raise();
+            // Then make sure regression layer is on top of everything
+            regressionGroup.raise();
           });
       }
 
-      // Function to add legends - now separate
+      /**
+       * Creates color legends for the visualization
+       */
       function addLegends() {
-        console.log("Adding legends");
-
         // Create a small gradient for the legend - with explicit ID for browser compatibility
         const legendLineGradientId = "legend-line-gradient-" + Date.now();
         const legendLineGradient = defs
@@ -769,21 +786,22 @@ function createScatterPlot(gender, age, weight, height) {
           .attr("x2", "30")
           .attr("y2", "0");
 
-        // Add more explicit color stops for the legend gradient
-        const legendColors = [
-          "#3060cf",
-          "#5090df",
-          "#80b0ef",
-          "#ffee99",
-          "#ffc066",
-          "#ff8833",
-          "#cf3030",
-        ];
-        legendColors.forEach((color, i) => {
+        // Use samples from the global RER range to create the legend gradient stops
+        // This ensures legend matches the same color scale across all visualizations
+        const legendStops = d3.range(0, 1.01, 0.2).map((t) => {
+          const rerValue = d3.quantile(globalRerExtent, t);
+          return {
+            offset: `${t * 100}%`,
+            color: reversedColorScale(rerValue),
+          };
+        });
+
+        // Add color stops to the legend gradient
+        legendStops.forEach((stop) => {
           legendLineGradient
             .append("stop")
-            .attr("offset", `${i * (100 / 6)}%`)
-            .attr("stop-color", color);
+            .attr("offset", stop.offset)
+            .attr("stop-color", stop.color);
         });
 
         // Add a legend entry for the regression line
@@ -826,7 +844,7 @@ function createScatterPlot(gender, age, weight, height) {
 
         const legendScale = d3
           .scaleLinear()
-          .domain(rerExtent)
+          .domain(globalRerExtent)
           .range([legendHeight, 0]);
 
         const legendAxis = d3
@@ -878,6 +896,9 @@ function createScatterPlot(gender, age, weight, height) {
           .attr("text-anchor", "middle")
           .attr("font-size", "12px")
           .text("Average RER (VCO2/VO2)");
+
+        // Ensure legends are above the data points
+        svg.selectAll(".legend").raise();
       }
 
       // Add scatter plot points with appearance animation
@@ -930,16 +951,17 @@ function createScatterPlot(gender, age, weight, height) {
           // When the last point is done animating, create the regression line
           if (animatedPoints === totalPoints && !animationComplete) {
             animationComplete = true; // Prevent multiple calls
-            console.log("All points animated, now creating regression line");
             createRegressionLine();
           }
         });
 
-      // Function to start drawing
+      /**
+       * Starts user drawing on mouse down
+       * @param {Event} event - Mouse event
+       */
       function startDrawing(event) {
         // Only allow drawing if enabled
         if (!drawingEnabled) {
-          console.log("Drawing is currently disabled");
           return;
         }
 
@@ -953,7 +975,7 @@ function createScatterPlot(gender, age, weight, height) {
         // Store initial point
         freePathData = [[x, y]];
 
-        // Create an outline path
+        // Create an outline path in the drawing layer
         userOutlinePath = drawLayer
           .append("path")
           .datum(freePathData)
@@ -967,7 +989,10 @@ function createScatterPlot(gender, age, weight, height) {
           .attr("d", pathLineGenerator);
       }
 
-      // Function to update drawing as the user moves the mouse
+      /**
+       * Updates user drawing on mouse move
+       * @param {Event} event - Mouse event
+       */
       function updateDrawing(event) {
         if (!isDrawing || !drawingEnabled) return;
 
@@ -978,9 +1003,14 @@ function createScatterPlot(gender, age, weight, height) {
 
         // Update the path's "d" attribute
         userOutlinePath.attr("d", d3.line().curve(d3.curveBasis)(freePathData));
+
+        // Ensure regression group stays on top
+        regressionGroup.raise();
       }
 
-      // Function to finish drawing
+      /**
+       * Finishes user drawing on mouse up, creates gradient-colored path
+       */
       function endDrawing() {
         if (!isDrawing || !drawingEnabled) return;
 
@@ -1108,6 +1138,9 @@ function createScatterPlot(gender, age, weight, height) {
           });
 
         document.body.style.pointerEvents = "auto";
+
+        // Make sure regression group stays on top after drawing
+        regressionGroup.raise();
       }
 
       // Attach mouse events to the SVG
@@ -1117,7 +1150,6 @@ function createScatterPlot(gender, age, weight, height) {
         .on("mouseup", endDrawing);
     })
     .catch((error) => {
-      console.error("Error loading or processing data:", error);
       svg
         .append("text")
         .attr("class", "placeholder-text")
