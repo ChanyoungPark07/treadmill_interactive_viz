@@ -14,84 +14,12 @@ const width = 900,
   height = 600,
   margin = { top: 70, right: 120, bottom: 70, left: 80 };
 
-// Variable to track if drawing is enabled
-let drawingEnabled = false;
-
-// Add event listeners when the DOM is fully loaded
-document.addEventListener("DOMContentLoaded", function () {
-  const calculateBtn = document.querySelector(".predict-btn");
-  const resetBtn = document.querySelector(".reset-btn");
-  const eraseBtn = document.querySelector(".erase-draw");
-
-  // Set up the calculate button - initiates visualization based on demographic inputs
-  calculateBtn.addEventListener("click", function () {
-    // For gender, convert dropdown value to numeric format where 1=female, 0=male
-    const genderElem = document.getElementById("gender");
-    const gender = genderElem.value === "female" ? 1 : 0;
-
-    const age = parseFloat(document.getElementById("age").value);
-    const weight = parseFloat(document.getElementById("weight").value);
-    const height = parseFloat(document.getElementById("height").value);
-
-    // Validate inputs
-    if (isNaN(age) || isNaN(weight) || isNaN(height)) {
-      alert("Please enter valid numeric values for age, weight, and height.");
-      return;
-    }
-
-    // Create the scatter plot with the provided inputs
-    createScatterPlot(gender, age, weight, height);
-
-    // Enable drawing after calculation
-    drawingEnabled = true;
-  });
-
-  // Set up the reset button - clears visualization and input fields
-  resetBtn.addEventListener("click", function () {
-    // Clear input fields
-    document.getElementById("age").value = "";
-    document.getElementById("weight").value = "";
-    document.getElementById("height").value = "";
-
-    // Reset the visualization to show placeholder
-    svg.selectAll(".point").remove();
-    svg.selectAll(".x-axis").remove();
-    svg.selectAll(".y-axis").remove();
-    svg.selectAll(".grid-lines").remove();
-    svg.selectAll(".legend").remove();
-    svg.selectAll(".regression-line").remove();
-    svg.selectAll(".regression-line-outline").remove();
-    svg.selectAll(".regression-point-label").remove();
-    svg.selectAll(".regression-line-overlay").remove();
-    svg.selectAll(".highlight-point").remove();
-
-    // Clear any user drawings
-    svg.selectAll(".draw-layer").remove();
-
-    // Disable drawing
-    drawingEnabled = false;
-
-    // Add placeholder text again
-    svg.selectAll(".placeholder-text").remove();
-    svg
-      .append("text")
-      .attr("class", "placeholder-text")
-      .attr("x", innerWidth / 2)
-      .attr("y", innerHeight / 2)
-      .attr("text-anchor", "middle")
-      .attr("font-size", "16px")
-      .text("Enter your information and click 'Calculate' to view data");
-  });
-
-  // Set up the erase button - removes any user-drawn paths
-  eraseBtn.addEventListener("click", function () {
-    svg.selectAll(".draw-layer path").remove();
-  });
-});
-
 // Working dimensions inside the chart
 const innerWidth = width - margin.left - margin.right;
 const innerHeight = height - margin.top - margin.bottom;
+
+// Variable to track if drawing is enabled
+let drawingEnabled = false;
 
 // Create SVG canvas with responsive sizing
 const svg = d3
@@ -339,6 +267,396 @@ function calculateRER(weights, time, speed) {
 }
 
 /**
+ * Helper function to calculate distance between two points
+ * @param {Array} p1 - First point [x, y]
+ * @param {Array} p2 - Second point [x, y]
+ * @returns {number} Euclidean distance
+ */
+function distance(p1, p2) {
+  return Math.sqrt(Math.pow(p2[0] - p1[0], 2) + Math.pow(p2[1] - p1[1], 2));
+}
+
+/**
+ * Helper function to interpolate points for smoother drawing
+ * Creates additional points between p1 and p2 when the distance is large
+ * @param {Array} p1 - First point [x, y]
+ * @param {Array} p2 - Second point [x, y]
+ * @param {number} minDistance - Minimum distance between points
+ * @returns {Array} Array of interpolated points
+ */
+function interpolatePoints(p1, p2, minDistance = 5) {
+  const dist = distance(p1, p2);
+  const result = [p1];
+
+  if (dist > minDistance) {
+    // Calculate number of points to insert (more points = smoother curve)
+    const numPoints = Math.ceil(dist / minDistance);
+
+    for (let i = 1; i < numPoints; i++) {
+      const t = i / numPoints;
+      result.push([p1[0] + (p2[0] - p1[0]) * t, p1[1] + (p2[1] - p1[1]) * t]);
+    }
+  }
+
+  result.push(p2);
+  return result;
+}
+
+/**
+ * Creates color legends for the visualization including model information
+ * @param {Object} model - The selected model with weights and RMSE
+ * @param {Array} globalRerExtent - Min/max RER values for color scale
+ * @param {Function} reversedColorScale - Color scale function
+ * @param {Object} defs - SVG defs element for gradients
+ */
+function addLegends(model, globalRerExtent, reversedColorScale, defs) {
+  // Create a small gradient for the legend - with explicit ID for browser compatibility
+  const legendLineGradientId = "legend-line-gradient-" + Date.now();
+  const legendLineGradient = defs
+    .append("linearGradient")
+    .attr("id", legendLineGradientId)
+    .attr("gradientUnits", "userSpaceOnUse")
+    .attr("x1", "0")
+    .attr("y1", "0")
+    .attr("x2", "30")
+    .attr("y2", "0");
+
+  // Use samples from the global RER range to create the legend gradient stops
+  // This ensures legend matches the same color scale across all visualizations
+  const legendStops = d3.range(0, 1.01, 0.2).map((t) => {
+    const rerValue = d3.quantile(globalRerExtent, t);
+    return {
+      offset: `${t * 100}%`,
+      color: reversedColorScale(rerValue),
+    };
+  });
+
+  // Add color stops to the legend gradient
+  legendStops.forEach((stop) => {
+    legendLineGradient
+      .append("stop")
+      .attr("offset", stop.offset)
+      .attr("stop-color", stop.color);
+  });
+
+  // Add a legend group for the regression line and model info
+  const legendGroup = svg
+    .append("g")
+    .attr("class", "legend")
+    .attr("transform", `translate(${innerWidth - 180}, 20)`);
+
+  // Add the outline for the legend line
+  legendGroup
+    .append("line")
+    .attr("x1", 0)
+    .attr("y1", -35)
+    .attr("x2", 30)
+    .attr("y2", -35)
+    .attr("stroke", "#000")
+    .attr("stroke-opacity", 0.5)
+    .attr("stroke-width", 6);
+
+  // Add the colored line for the legend with updated gradient reference
+  legendGroup
+    .append("line")
+    .attr("x1", 0)
+    .attr("y1", -35)
+    .attr("x2", 30)
+    .attr("y2", -35)
+    .attr("stroke", `url(#${legendLineGradientId})`)
+    .attr("stroke-width", 4);
+
+  // Add legend text for the regression line
+  legendGroup
+    .append("text")
+    .attr("x", 35)
+    .attr("y", -30)
+    .attr("text-anchor", "start")
+    .text("Model Regression Line");
+
+  // Add RMSE legend entry with proper positioning
+  legendGroup
+    .append("text")
+    .attr("x", 40)
+    .attr("y", 480)
+    .attr("text-anchor", "start")
+    .attr("font-weight", "bold")
+    .attr("fill", "red")
+    .text(`Model RMSE: ${model.rmse.toFixed(4)}`);
+
+  // Add RMSE explanation
+  legendGroup
+    .append("text")
+    .attr("x", -39)
+    .attr("y", 495)
+    .attr("text-anchor", "start")
+    .attr("font-size", "10px")
+    .text("(Lower RMSE indicates better model accuracy)");
+
+  // Add color legend for RER values
+  const legendWidth = 30;
+  const legendHeight = innerHeight;
+
+  const legendScale = d3
+    .scaleLinear()
+    .domain(globalRerExtent)
+    .range([legendHeight, 0]);
+
+  const legendAxis = d3
+    .axisRight(legendScale)
+    .ticks(8)
+    .tickFormat(d3.format(".2f"));
+
+  const legend = svg
+    .append("g")
+    .attr("class", "legend")
+    .attr("transform", `translate(${innerWidth + 20}, 0)`);
+
+  // Create gradient for legend
+  const linearGradient = defs
+    .append("linearGradient")
+    .attr("id", "rer-gradient")
+    .attr("x1", "0%")
+    .attr("y1", "100%")
+    .attr("x2", "0%")
+    .attr("y2", "0%");
+
+  // Add color stops to match the RdYlBu_r colormap
+  const colorStops = d3.range(0, 1.01, 0.1).map((t) => {
+    const rer = d3.quantile(globalRerExtent, t);
+    return {
+      offset: `${t * 100}%`,
+      color: reversedColorScale(rer),
+    };
+  });
+
+  colorStops.forEach((stop) => {
+    linearGradient
+      .append("stop")
+      .attr("offset", stop.offset)
+      .attr("stop-color", stop.color);
+  });
+
+  // Draw the gradient rectangle
+  legend
+    .append("rect")
+    .attr("width", legendWidth)
+    .attr("height", legendHeight)
+    .style("fill", "url(#rer-gradient)");
+
+  // Add the legend axis
+  legend
+    .append("g")
+    .attr("transform", `translate(${legendWidth}, 0)`)
+    .call(legendAxis);
+
+  // Add legend title
+  legend
+    .append("text")
+    .attr("transform", "rotate(90)")
+    .attr("x", legendHeight / 2)
+    .attr("y", -legendWidth - 45)
+    .attr("text-anchor", "middle")
+    .attr("font-size", "12px")
+    .text("Average RER (VCO2/VO2)");
+
+  // Ensure legends are above the data points
+  svg.selectAll(".legend").raise();
+}
+
+/**
+ * Creates the regression line with color gradient based on RER values
+ * @param {Object} regressionGroup - D3 selection for regression line group
+ * @param {Array} regressionData - Data for creating the regression line
+ * @param {Function} lineGenerator - D3 line generator function
+ * @param {Function} xScale - X-axis scale function
+ * @param {Function} yScale - Y-axis scale function
+ * @param {Function} reversedColorScale - Color scale function for the line
+ * @param {Object} defs - SVG defs element for gradients
+ * @param {Object} model - Model weights and parameters
+ */
+function createRegressionLine(
+  regressionGroup,
+  regressionData,
+  lineGenerator,
+  xScale,
+  yScale,
+  reversedColorScale,
+  defs,
+  model,
+  globalRerExtent
+) {
+  // Create gradient for the line color with unique ID
+  const lineGradientId = "line-gradient-" + Date.now();
+  const lineGradient = defs
+    .append("linearGradient")
+    .attr("id", lineGradientId)
+    .attr("gradientUnits", "userSpaceOnUse")
+    .attr("x1", 0)
+    .attr("y1", 0)
+    .attr("x2", innerWidth)
+    .attr("y2", 0);
+
+  // Use the same color scale as the data points for consistent coloring
+  regressionData.forEach((d, i) => {
+    lineGradient
+      .append("stop")
+      .attr("offset", `${(i / (regressionData.length - 1)) * 100}%`)
+      .attr("stop-color", reversedColorScale(d.predictedRER));
+  });
+
+  // First add the outline stroke to the regression group
+  const outlinePath = regressionGroup
+    .append("path")
+    .datum(regressionData)
+    .attr("class", "regression-line-outline")
+    .attr("fill", "none")
+    .attr("stroke", "#000") // Black outline
+    .attr("stroke-width", 6) // Wider than the colored line
+    .attr("stroke-opacity", 0.5)
+    .attr("d", lineGenerator);
+
+  // Then add the colored regression line on top in the regression group
+  const path = regressionGroup
+    .append("path")
+    .datum(regressionData)
+    .attr("class", "regression-line")
+    .attr("fill", "none")
+    .attr("stroke", `url(#${lineGradientId})`)
+    .attr("stroke-width", 4)
+    .attr("d", lineGenerator);
+
+  // Animate the regression line drawing from left to right
+  const pathLength = path.node().getTotalLength();
+  const outlinePathLength = outlinePath.node().getTotalLength();
+
+  outlinePath
+    .attr("stroke-dasharray", outlinePathLength)
+    .attr("stroke-dashoffset", outlinePathLength)
+    .transition()
+    .duration(1500)
+    .attr("stroke-dashoffset", 0);
+
+  path
+    .attr("stroke-dasharray", pathLength)
+    .attr("stroke-dashoffset", pathLength)
+    .transition()
+    .duration(1500)
+    .attr("stroke-dashoffset", 0)
+    .on("end", function () {
+      // After line is drawn, add RER value labels to the regression group
+      regressionGroup
+        .selectAll(".regression-point-label")
+        .data(regressionData)
+        .enter()
+        .append("text")
+        .attr("class", "regression-point-label")
+        .attr("x", (d) => xScale(d.time) + 5)
+        .attr("y", (d) => yScale(d.avgSpeed) - 15) // Moved up more as requested
+        .attr("font-size", "10px")
+        .attr("fill", "#303030")
+        .attr("stroke", "#ffffff")
+        .attr("stroke-width", 0.5)
+        .attr("paint-order", "stroke")
+        .text((d) => d.predictedRER.toFixed(2))
+        .style("opacity", 0)
+        .style("display", (d) => (d.time % 120 === 0 ? "block" : "none")) // Show labels only every 2 minutes
+        .transition()
+        .duration(500)
+        .style("opacity", 1);
+
+      // Create an invisible overlay for the regression line to make it easier to hover
+      const lineOverlayWidth = 20; // Width of the invisible hover area
+
+      // Create a path generator for the overlay
+      const overlayPathGenerator = d3
+        .line()
+        .x((d) => xScale(d.time))
+        .y((d) => yScale(d.avgSpeed))
+        .curve(d3.curveCatmullRom.alpha(0.5));
+
+      // Add invisible overlay path with wider stroke-width for easier hovering to the regression group
+      const overlayPath = regressionGroup
+        .append("path")
+        .datum(regressionData)
+        .attr("class", "regression-line-overlay")
+        .attr("fill", "none")
+        .attr("stroke", "transparent") // Invisible stroke
+        .attr("stroke-width", lineOverlayWidth) // Much wider than the visible line for easier hovering
+        .attr("d", overlayPathGenerator)
+        .style("pointer-events", "stroke") // Only trigger mouse events on the stroke, not the area
+        .on("mousemove", function (event) {
+          // Get mouse position relative to the SVG
+          const [mouseX, mouseY] = d3.pointer(event, this);
+
+          // Convert mouse position to data values
+          const time = xScale.invert(mouseX);
+          const speed = yScale.invert(mouseY);
+
+          // Find the closest point on the regression line
+          // Use bisector to find the closest time point
+          const bisectTime = d3.bisector((d) => d.time).left;
+          const index = bisectTime(regressionData, time);
+
+          // Choose the closest point
+          const closest =
+            index > 0
+              ? time - regressionData[index - 1].time <
+                regressionData[index].time - time
+                ? regressionData[index - 1]
+                : regressionData[index]
+              : regressionData[index];
+
+          // Calculate predicted RER for the exact mouse position using the model weights
+          const exactRER = calculateRER(model.weights, time, speed);
+
+          // Show tooltip at mouse position
+          tooltip
+            .style("visibility", "visible")
+            .style("left", `${event.pageX + 10}px`)
+            .style("top", `${event.pageY - 10}px`).html(`
+            <b>Regression Line</b><br>
+            <strong>Time:</strong> ${time.toFixed(
+              0
+            )} seconds (${(time / 60).toFixed(1)} min)<br>
+            <strong>Speed:</strong> ${speed.toFixed(1)} km/h<br>
+            <strong>Predicted RER:</strong> ${exactRER.toFixed(3)}
+          `);
+
+          // Highlight the point on the regression line
+          svg.selectAll(".highlight-point").remove();
+
+          regressionGroup
+            .append("circle")
+            .attr("class", "highlight-point")
+            .attr("cx", xScale(closest.time))
+            .attr("cy", yScale(closest.avgSpeed))
+            .attr("r", 6)
+            .attr("fill", "white")
+            .attr("stroke", "#000")
+            .attr("stroke-width", 2)
+            .style("pointer-events", "none"); // Don't interfere with hover events
+        })
+        .on("mouseout", function () {
+          // Hide tooltip
+          tooltip.style("visibility", "hidden");
+
+          // Remove highlight
+          svg.selectAll(".highlight-point").remove();
+        });
+
+      // After regression line is complete, add legends
+      addLegends(model, globalRerExtent, reversedColorScale, defs);
+
+      // Ensure proper z-index by raising elements in order
+      // First make sure drawing layer is above data points
+      d3.select(".draw-layer").raise();
+      // Then make sure regression layer is on top of everything
+      regressionGroup.raise();
+    });
+}
+
+/**
  * Main function to create and update the scatter plot
  * @param {number} gender - 0 for male, 1 for female
  * @param {number} age - User's age
@@ -384,7 +702,10 @@ function createScatterPlot(gender, age, weight, height) {
     .curve(d3.curveCatmullRom.alpha(0.75)); // Increased smoothing with higher alpha
 
   // Load and process the data
-  Promise.all([d3.json("model_weights.json"), d3.csv("merged.csv")])
+  Promise.all([
+    d3.json("./data/model_weights.json"),
+    d3.csv("./data/merged.csv"),
+  ])
     .then(([modelWeights, data]) => {
       // Find the appropriate model for this demographic
       const model = findModelWeights(gender, age, weight, height, modelWeights);
@@ -585,412 +906,10 @@ function createScatterPlot(gender, age, weight, height) {
         .y((d) => yScale(d.avgSpeed))
         .curve(d3.curveCatmullRom.alpha(0.5)); // Smoother curve
 
-      // Add color stops to match the RdYlBu_r colormap for both legends
-      // Use global RER extent for consistent legend colors
-      const colorStops = d3.range(0, 1.01, 0.1).map((t) => {
-        const rer = d3.quantile(globalRerExtent, t);
-        return {
-          offset: `${t * 100}%`,
-          color: reversedColorScale(rer),
-        };
-      });
-
       // Variables to track animation completion
       let totalPoints = binnedData.length;
       let animatedPoints = 0;
       let animationComplete = false;
-
-      /**
-       * Creates the regression line with color gradient based on RER values
-       */
-      function createRegressionLine() {
-        // Create gradient for the line color with unique ID
-        const lineGradientId = "line-gradient-" + Date.now();
-        const lineGradient = defs
-          .append("linearGradient")
-          .attr("id", lineGradientId)
-          .attr("gradientUnits", "userSpaceOnUse")
-          .attr("x1", 0)
-          .attr("y1", 0)
-          .attr("x2", innerWidth)
-          .attr("y2", 0);
-
-        // Use the same color scale as the data points for consistent coloring
-        regressionData.forEach((d, i) => {
-          lineGradient
-            .append("stop")
-            .attr("offset", `${(i / (regressionData.length - 1)) * 100}%`)
-            .attr("stop-color", reversedColorScale(d.predictedRER));
-        });
-
-        // First add the outline stroke to the regression group
-        const outlinePath = regressionGroup
-          .append("path")
-          .datum(regressionData)
-          .attr("class", "regression-line-outline")
-          .attr("fill", "none")
-          .attr("stroke", "#000") // Black outline
-          .attr("stroke-width", 6) // Wider than the colored line
-          .attr("stroke-opacity", 0.5)
-          .attr("d", lineGenerator);
-
-        // Then add the colored regression line on top in the regression group
-        const path = regressionGroup
-          .append("path")
-          .datum(regressionData)
-          .attr("class", "regression-line")
-          .attr("fill", "none")
-          .attr("stroke", `url(#${lineGradientId})`)
-          .attr("stroke-width", 4)
-          .attr("d", lineGenerator);
-
-        // Animate the regression line drawing from left to right
-        const pathLength = path.node().getTotalLength();
-        const outlinePathLength = outlinePath.node().getTotalLength();
-
-        outlinePath
-          .attr("stroke-dasharray", outlinePathLength)
-          .attr("stroke-dashoffset", outlinePathLength)
-          .transition()
-          .duration(1500)
-          .attr("stroke-dashoffset", 0);
-
-        path
-          .attr("stroke-dasharray", pathLength)
-          .attr("stroke-dashoffset", pathLength)
-          .transition()
-          .duration(1500)
-          .attr("stroke-dashoffset", 0)
-          .on("end", function () {
-            // After line is drawn, add RER value labels to the regression group
-            regressionGroup
-              .selectAll(".regression-point-label")
-              .data(regressionData)
-              .enter()
-              .append("text")
-              .attr("class", "regression-point-label")
-              .attr("x", (d) => xScale(d.time) + 5)
-              .attr("y", (d) => yScale(d.avgSpeed) - 15) // Moved up more as requested
-              .attr("font-size", "10px")
-              .attr("fill", "#303030")
-              .attr("stroke", "#ffffff")
-              .attr("stroke-width", 0.5)
-              .attr("paint-order", "stroke")
-              .text((d) => d.predictedRER.toFixed(2))
-              .style("opacity", 0)
-              .style("display", (d) => (d.time % 120 === 0 ? "block" : "none")) // Show labels only every 2 minutes
-              .transition()
-              .duration(500)
-              .style("opacity", 1);
-
-            // Create an invisible overlay for the regression line to make it easier to hover
-            const lineOverlayWidth = 20; // Width of the invisible hover area
-
-            // Create a path generator for the overlay
-            const overlayPathGenerator = d3
-              .line()
-              .x((d) => xScale(d.time))
-              .y((d) => yScale(d.avgSpeed))
-              .curve(d3.curveCatmullRom.alpha(0.5));
-
-            // Add invisible overlay path with wider stroke-width for easier hovering to the regression group
-            const overlayPath = regressionGroup
-              .append("path")
-              .datum(regressionData)
-              .attr("class", "regression-line-overlay")
-              .attr("fill", "none")
-              .attr("stroke", "transparent") // Invisible stroke
-              .attr("stroke-width", lineOverlayWidth) // Much wider than the visible line for easier hovering
-              .attr("d", overlayPathGenerator)
-              .style("pointer-events", "stroke") // Only trigger mouse events on the stroke, not the area
-              .on("mousemove", function (event) {
-                // Get mouse position relative to the SVG
-                const [mouseX, mouseY] = d3.pointer(event, this);
-
-                // Convert mouse position to data values
-                const time = xScale.invert(mouseX);
-                const speed = yScale.invert(mouseY);
-
-                // Find the closest point on the regression line
-                // Use bisector to find the closest time point
-                const bisectTime = d3.bisector((d) => d.time).left;
-                const index = bisectTime(regressionData, time);
-
-                // Choose the closest point
-                const closest =
-                  index > 0
-                    ? time - regressionData[index - 1].time <
-                      regressionData[index].time - time
-                      ? regressionData[index - 1]
-                      : regressionData[index]
-                    : regressionData[index];
-
-                // Calculate predicted RER for the exact mouse position using the model weights
-                const exactRER = calculateRER(model.weights, time, speed);
-
-                // Show tooltip at mouse position
-                tooltip
-                  .style("visibility", "visible")
-                  .style("left", `${event.pageX + 10}px`)
-                  .style("top", `${event.pageY - 10}px`).html(`
-                  <b>Regression Line</b><br>
-                  <strong>Time:</strong> ${time.toFixed(
-                    0
-                  )} seconds (${(time / 60).toFixed(1)} min)<br>
-                  <strong>Speed:</strong> ${speed.toFixed(1)} km/h<br>
-                  <strong>Predicted RER:</strong> ${exactRER.toFixed(3)}
-                `);
-
-                // Highlight the point on the regression line
-                svg.selectAll(".highlight-point").remove();
-
-                regressionGroup
-                  .append("circle")
-                  .attr("class", "highlight-point")
-                  .attr("cx", xScale(closest.time))
-                  .attr("cy", yScale(closest.avgSpeed))
-                  .attr("r", 6)
-                  .attr("fill", "white")
-                  .attr("stroke", "#000")
-                  .attr("stroke-width", 2)
-                  .style("pointer-events", "none"); // Don't interfere with hover events
-              })
-              .on("mouseout", function () {
-                // Hide tooltip
-                tooltip.style("visibility", "hidden");
-
-                // Remove highlight
-                svg.selectAll(".highlight-point").remove();
-              });
-
-            // After regression line is complete, add legends
-            addLegends();
-
-            // Ensure proper z-index by raising elements in order
-            // First make sure drawing layer is above data points
-            drawLayer.raise();
-            // Then make sure regression layer is on top of everything
-            regressionGroup.raise();
-          });
-      }
-
-      /**
-       * Creates color legends for the visualization
-       */
-      function addLegends() {
-        // Create a small gradient for the legend - with explicit ID for browser compatibility
-        const legendLineGradientId = "legend-line-gradient-" + Date.now();
-        const legendLineGradient = defs
-          .append("linearGradient")
-          .attr("id", legendLineGradientId)
-          .attr("gradientUnits", "userSpaceOnUse")
-          .attr("x1", "0")
-          .attr("y1", "0")
-          .attr("x2", "30")
-          .attr("y2", "0");
-
-        // Use samples from the global RER range to create the legend gradient stops
-        // This ensures legend matches the same color scale across all visualizations
-        const legendStops = d3.range(0, 1.01, 0.2).map((t) => {
-          const rerValue = d3.quantile(globalRerExtent, t);
-          return {
-            offset: `${t * 100}%`,
-            color: reversedColorScale(rerValue),
-          };
-        });
-
-        // Add color stops to the legend gradient
-        legendStops.forEach((stop) => {
-          legendLineGradient
-            .append("stop")
-            .attr("offset", stop.offset)
-            .attr("stop-color", stop.color);
-        });
-
-        // Add a legend entry for the regression line
-        const legendGroup = svg
-          .append("g")
-          .attr("class", "legend")
-          .attr("transform", `translate(${innerWidth - 180}, 20)`);
-
-        // Add the outline for the legend line
-        legendGroup
-          .append("line")
-          .attr("x1", 0)
-          .attr("y1", -35)
-          .attr("x2", 30)
-          .attr("y2", -35)
-          .attr("stroke", "#000")
-          .attr("stroke-opacity", 0.5)
-          .attr("stroke-width", 6);
-
-        // Add the colored line for the legend with updated gradient reference
-        legendGroup
-          .append("line")
-          .attr("x1", 0)
-          .attr("y1", -35)
-          .attr("x2", 30)
-          .attr("y2", -35)
-          .attr("stroke", `url(#${legendLineGradientId})`)
-          .attr("stroke-width", 4);
-
-        legendGroup
-          .append("text")
-          .attr("x", 35)
-          .attr("y", -30)
-          .attr("text-anchor", "start")
-          .text("Model Regression Line");
-
-        // Add color legend for RER values
-        const legendWidth = 30;
-        const legendHeight = innerHeight;
-
-        const legendScale = d3
-          .scaleLinear()
-          .domain(globalRerExtent)
-          .range([legendHeight, 0]);
-
-        const legendAxis = d3
-          .axisRight(legendScale)
-          .ticks(8)
-          .tickFormat(d3.format(".2f"));
-
-        const legend = svg
-          .append("g")
-          .attr("class", "legend")
-          .attr("transform", `translate(${innerWidth + 20}, 0)`);
-
-        // Create gradient for legend
-        const linearGradient = defs
-          .append("linearGradient")
-          .attr("id", "rer-gradient")
-          .attr("x1", "0%")
-          .attr("y1", "100%")
-          .attr("x2", "0%")
-          .attr("y2", "0%");
-
-        // Add color stops to match the RdYlBu_r colormap
-        colorStops.forEach((stop) => {
-          linearGradient
-            .append("stop")
-            .attr("offset", stop.offset)
-            .attr("stop-color", stop.color);
-        });
-
-        // Draw the gradient rectangle
-        legend
-          .append("rect")
-          .attr("width", legendWidth)
-          .attr("height", legendHeight)
-          .style("fill", "url(#rer-gradient)");
-
-        // Add the legend axis
-        legend
-          .append("g")
-          .attr("transform", `translate(${legendWidth}, 0)`)
-          .call(legendAxis);
-
-        // Add legend title
-        legend
-          .append("text")
-          .attr("transform", "rotate(90)")
-          .attr("x", legendHeight / 2)
-          .attr("y", -legendWidth - 45)
-          .attr("text-anchor", "middle")
-          .attr("font-size", "12px")
-          .text("Average RER (VCO2/VO2)");
-
-        // Ensure legends are above the data points
-        svg.selectAll(".legend").raise();
-      }
-
-      // Add scatter plot points with appearance animation
-      svg
-        .selectAll(".point")
-        .data(binnedData)
-        .enter()
-        .append("circle")
-        .attr("class", "point")
-        .attr("cx", (d) => xScale(d.time_bin))
-        .attr("cy", (d) => yScale(d.speed_bin))
-        .attr("r", 0) // Start with radius 0 for animation
-        .attr("fill", (d) => reversedColorScale(d.RER))
-        .attr("stroke", "#fff")
-        .attr("stroke-width", 1)
-        .attr("opacity", 0.8)
-        .on("mouseover", function (event, d) {
-          d3.select(this)
-            .transition()
-            .duration(200)
-            .attr("r", (d) => Math.min(12, 7 + Math.sqrt(d.count)))
-            .attr("opacity", 1);
-
-          tooltip
-            .style("visibility", "visible")
-            .style("left", `${event.pageX + 10}px`)
-            .style("top", `${event.pageY - 10}px`).html(`
-            <strong>Time:</strong> ${d.time_bin} seconds<br>
-            <strong>Speed:</strong> ${d.speed_bin.toFixed(1)} km/h<br>
-            <strong>Average RER:</strong> ${d.RER.toFixed(3)}<br>
-            <strong>Data points:</strong> ${d.count}
-          `);
-        })
-        .on("mouseout", function (event, d) {
-          d3.select(this)
-            .transition()
-            .duration(200)
-            .attr("r", (d) => calculateRadius(d.count))
-            .attr("opacity", 0.8);
-
-          tooltip.style("visibility", "hidden");
-        })
-        .transition() // Animate points appearance
-        .duration(1000)
-        .delay((d, i) => i * 10)
-        .attr("r", (d) => calculateRadius(d.count))
-        .on("end", function (d, i) {
-          animatedPoints++;
-
-          // When the last point is done animating, create the regression line
-          if (animatedPoints === totalPoints && !animationComplete) {
-            animationComplete = true; // Prevent multiple calls
-            createRegressionLine();
-          }
-        });
-
-      /**
-       * Helper function to calculate distance between two points
-       */
-      function distance(p1, p2) {
-        return Math.sqrt(
-          Math.pow(p2[0] - p1[0], 2) + Math.pow(p2[1] - p1[1], 2)
-        );
-      }
-
-      /**
-       * Helper function to interpolate points for smoother drawing
-       * Creates additional points between p1 and p2 when the distance is large
-       */
-      function interpolatePoints(p1, p2, minDistance = 5) {
-        const dist = distance(p1, p2);
-        const result = [p1];
-
-        if (dist > minDistance) {
-          // Calculate number of points to insert (more points = smoother curve)
-          const numPoints = Math.ceil(dist / minDistance);
-
-          for (let i = 1; i < numPoints; i++) {
-            const t = i / numPoints;
-            result.push([
-              p1[0] + (p2[0] - p1[0]) * t,
-              p1[1] + (p2[1] - p1[1]) * t,
-            ]);
-          }
-        }
-
-        result.push(p2);
-        return result;
-      }
 
       /**
        * Starts user drawing on mouse down
@@ -1197,6 +1116,70 @@ function createScatterPlot(gender, age, weight, height) {
         regressionGroup.raise();
       }
 
+      // Add scatter plot points with appearance animation
+      svg
+        .selectAll(".point")
+        .data(binnedData)
+        .enter()
+        .append("circle")
+        .attr("class", "point")
+        .attr("cx", (d) => xScale(d.time_bin))
+        .attr("cy", (d) => yScale(d.speed_bin))
+        .attr("r", 0) // Start with radius 0 for animation
+        .attr("fill", (d) => reversedColorScale(d.RER))
+        .attr("stroke", "#fff")
+        .attr("stroke-width", 1)
+        .attr("opacity", 0.8)
+        .on("mouseover", function (event, d) {
+          d3.select(this)
+            .transition()
+            .duration(200)
+            .attr("r", (d) => Math.min(12, 7 + Math.sqrt(d.count)))
+            .attr("opacity", 1);
+
+          tooltip
+            .style("visibility", "visible")
+            .style("left", `${event.pageX + 10}px`)
+            .style("top", `${event.pageY - 10}px`).html(`
+            <strong>Time:</strong> ${d.time_bin} seconds<br>
+            <strong>Speed:</strong> ${d.speed_bin.toFixed(1)} km/h<br>
+            <strong>Average RER:</strong> ${d.RER.toFixed(3)}<br>
+            <strong>Data points:</strong> ${d.count}
+          `);
+        })
+        .on("mouseout", function (event, d) {
+          d3.select(this)
+            .transition()
+            .duration(200)
+            .attr("r", (d) => calculateRadius(d.count))
+            .attr("opacity", 0.8);
+
+          tooltip.style("visibility", "hidden");
+        })
+        .transition() // Animate points appearance
+        .duration(1000)
+        .delay((d, i) => i * 10)
+        .attr("r", (d) => calculateRadius(d.count))
+        .on("end", function (d, i) {
+          animatedPoints++;
+
+          // When the last point is done animating, create the regression line
+          if (animatedPoints === totalPoints && !animationComplete) {
+            animationComplete = true; // Prevent multiple calls
+            createRegressionLine(
+              regressionGroup,
+              regressionData,
+              lineGenerator,
+              xScale,
+              yScale,
+              reversedColorScale,
+              defs,
+              model,
+              globalRerExtent
+            );
+          }
+        });
+
       // Attach mouse events to the SVG
       svg
         .on("mousedown", startDrawing)
@@ -1214,3 +1197,75 @@ function createScatterPlot(gender, age, weight, height) {
         .text("Error loading data: " + error.message);
     });
 }
+
+// Add event listeners when the DOM is fully loaded
+document.addEventListener("DOMContentLoaded", function () {
+  const calculateBtn = document.querySelector(".predict-btn");
+  const resetBtn = document.querySelector(".reset-btn");
+  const eraseBtn = document.querySelector(".erase-draw");
+
+  // Set up the calculate button - initiates visualization based on demographic inputs
+  calculateBtn.addEventListener("click", function () {
+    // For gender, convert dropdown value to numeric format where 1=female, 0=male
+    const genderElem = document.getElementById("gender");
+    const gender = genderElem.value === "female" ? 1 : 0;
+
+    const age = parseFloat(document.getElementById("age").value);
+    const weight = parseFloat(document.getElementById("weight").value);
+    const height = parseFloat(document.getElementById("height").value);
+
+    // Validate inputs
+    if (isNaN(age) || isNaN(weight) || isNaN(height)) {
+      alert("Please enter valid numeric values for age, weight, and height.");
+      return;
+    }
+
+    // Create the scatter plot with the provided inputs
+    createScatterPlot(gender, age, weight, height);
+
+    // Enable drawing after calculation
+    drawingEnabled = true;
+  });
+
+  // Set up the reset button - clears visualization and input fields
+  resetBtn.addEventListener("click", function () {
+    // Clear input fields
+    document.getElementById("age").value = "";
+    document.getElementById("weight").value = "";
+    document.getElementById("height").value = "";
+
+    // Reset the visualization to show placeholder
+    svg.selectAll(".point").remove();
+    svg.selectAll(".x-axis").remove();
+    svg.selectAll(".y-axis").remove();
+    svg.selectAll(".grid-lines").remove();
+    svg.selectAll(".legend").remove();
+    svg.selectAll(".regression-line").remove();
+    svg.selectAll(".regression-line-outline").remove();
+    svg.selectAll(".regression-point-label").remove();
+    svg.selectAll(".regression-line-overlay").remove();
+    svg.selectAll(".highlight-point").remove();
+
+    // Clear any user drawings
+    svg.selectAll(".draw-layer").remove();
+
+    // Disable drawing
+    drawingEnabled = false;
+
+    // Add placeholder text again
+    svg.selectAll(".placeholder-text").remove();
+    svg
+      .append("text")
+      .attr("class", "placeholder-text")
+      .attr("x", innerWidth / 2)
+      .attr("y", innerHeight / 2)
+      .attr("text-anchor", "middle")
+      .attr("font-size", "16px")
+      .text("Enter your information and click 'Calculate' to view data");
+  });
+
+  // Set up the erase button - removes any user-drawn paths
+  eraseBtn.addEventListener("click", function () {
+    svg.selectAll(".draw-layer path").remove();
+  });
+});
