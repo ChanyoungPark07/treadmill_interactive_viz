@@ -138,6 +138,7 @@ header {
 .visualization-section {
   width: 100%;
   margin: 0 auto;
+  max-width: 90%;
 }
 
 .visualization-container {
@@ -575,6 +576,10 @@ button {
   
   .card {
     padding: 1rem;
+  }
+
+  .visualization-section {
+    max-width: 100%;
   }
   
   .button-group {
